@@ -185,16 +185,43 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
+    padding: 0 0.5rem;
 }
 
 .section-header h2 {
+    margin: 0;
     color: #2c3e50;
     font-size: 1.5rem;
     font-weight: 600;
+}
+
+.section-actions {
     display: flex;
+    gap: 0.75rem;
     align-items: center;
-    gap: 0.5rem;
+}
+
+.section-actions .btn {
+    white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+    .section-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+    }
+    
+    .section-actions {
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    
+    .section-actions .btn {
+        flex: 1;
+        min-width: 140px;
+    }
 }
 
 /* Alerts Section */
@@ -903,6 +930,26 @@ body {
     background: linear-gradient(135deg, #c0392b, #a93226);
     transform: translateY(-2px);
     box-shadow: 0 8px 25px rgba(231, 76, 60, 0.4);
+}
+
+/* Calendar Sync Button Styling */
+.prospect-actions .btn-info {
+    background: linear-gradient(135deg, #17a2b8, #138496);
+    border: none;
+}
+
+.prospect-actions .btn-info:hover:not(:disabled) {
+    background: linear-gradient(135deg, #138496, #117a8b);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(23, 162, 184, 0.4);
+}
+
+.prospect-actions .btn-info:disabled {
+    background: #6c757d;
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
 }
 
 /* Probability-based styling */

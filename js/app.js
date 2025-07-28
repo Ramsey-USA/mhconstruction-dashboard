@@ -387,6 +387,12 @@ class ConstructionDashboard {
                         <button class="btn btn-success" onclick="dashboard.convertToProject('${prospect.id}')">
                             <i class="fas fa-building"></i> Convert to Project
                         </button>
+                        <button class="btn btn-info" onclick="syncProspectToCalendar('${prospect.id}', 'walk')" title="Sync Walk Date to Outlook Calendar" ${!prospect.walkDate ? 'disabled' : ''}>
+                            <i class="fas fa-calendar-plus"></i> Sync Walk
+                        </button>
+                        <button class="btn btn-info" onclick="syncProspectToCalendar('${prospect.id}', 'proposal')" title="Sync Proposal Due Date to Outlook Calendar" ${!prospect.proposalDueDate ? 'disabled' : ''}>
+                            <i class="fas fa-calendar-check"></i> Sync Proposal
+                        </button>
                         <button class="btn btn-danger" onclick="dashboard.deleteProspect('${prospect.id}')">
                             <i class="fas fa-trash"></i> Delete
                         </button>
@@ -559,7 +565,10 @@ class ConstructionDashboard {
         e.preventDefault();
         
         try {
-            const prospect = {
+            const modal = document.getElementById('add-prospect-modal');
+            const isEditing = modal.dataset.editingProspectId;
+            
+            const prospectData = {
                 name: document.getElementById('prospect-name').value,
                 client: document.getElementById('prospect-client').value,
                 estimatorId: document.getElementById('prospect-estimator').value,
@@ -571,14 +580,70 @@ class ConstructionDashboard {
                 status: 'active'
             };
             
-            await dataManager.addProspect(prospect);
+            let prospect;
+            let calendarSynced = false;
+            
+            if (isEditing) {
+                // Update existing prospect
+                prospect = await dataManager.updateProspect(isEditing, prospectData);
+                this.showNotification('Prospect updated successfully!', 'success');
+                
+                // Sync calendar events for updated dates
+                if (prospectData.walkDate) {
+                    try {
+                        await syncProspectToCalendar(isEditing, 'walk');
+                        calendarSynced = true;
+                    } catch (error) {
+                        console.error('Error syncing walk date to calendar:', error);
+                    }
+                }
+                if (prospectData.proposalDueDate) {
+                    try {
+                        await syncProspectToCalendar(isEditing, 'proposal');
+                        calendarSynced = true;
+                    } catch (error) {
+                        console.error('Error syncing proposal due date to calendar:', error);
+                    }
+                }
+                
+                // Clean up edit mode
+                delete modal.dataset.editingProspectId;
+                modal.querySelector('.modal-header h3').textContent = 'Add Prospect';
+                modal.querySelector('button[type="submit"]').textContent = 'Add Prospect';
+                
+            } else {
+                // Add new prospect
+                prospect = await dataManager.addProspect(prospectData);
+                
+                // Auto-sync new prospect dates to calendar
+                if (prospect.walkDate) {
+                    try {
+                        await syncProspectToCalendar(prospect.id, 'walk');
+                        calendarSynced = true;
+                    } catch (error) {
+                        console.error('Error syncing walk date to calendar:', error);
+                    }
+                }
+                if (prospect.proposalDueDate) {
+                    try {
+                        await syncProspectToCalendar(prospect.id, 'proposal');
+                        calendarSynced = true;
+                    } catch (error) {
+                        console.error('Error syncing proposal due date to calendar:', error);
+                    }
+                }
+                
+                this.showNotification('Prospect added successfully!' + 
+                    (calendarSynced ? ' Calendar events have been synced to Outlook.' : ''), 'success');
+            }
+            
             this.closeModal('add-prospect-modal');
-            this.showNotification('Prospect added successfully!', 'success');
             this.loadProspects();
             e.target.reset();
+            
         } catch (error) {
-            console.error('Error adding prospect:', error);
-            this.showNotification('Failed to add prospect. Please try again.', 'error');
+            console.error('Error saving prospect:', error);
+            this.showNotification('Failed to save prospect. Please try again.', 'error');
         }
     }
 
@@ -765,6 +830,39 @@ class ConstructionDashboard {
             this.showNotification('Prospect deleted!', 'success');
             this.loadProspects();
         }
+    }
+
+    editProspect(prospectId) {
+        const prospects = dataManager.getProspects();
+        const prospect = prospects.find(p => p.id === prospectId);
+        
+        if (!prospect) {
+            this.showNotification('Prospect not found', 'error');
+            return;
+        }
+
+        // Populate edit form with existing data
+        document.getElementById('prospect-name').value = prospect.name || '';
+        document.getElementById('prospect-client').value = prospect.client || '';
+        document.getElementById('prospect-estimator').value = prospect.estimatorId || '';
+        document.getElementById('prospect-walk-date').value = prospect.walkDate || '';
+        document.getElementById('prospect-due-date').value = prospect.proposalDueDate || '';
+        document.getElementById('prospect-value').value = prospect.estimatedValue || '';
+        document.getElementById('prospect-probability').value = prospect.probability || '';
+        document.getElementById('prospect-notes').value = prospect.notes || '';
+
+        // Change form to edit mode
+        const modal = document.getElementById('add-prospect-modal');
+        const modalTitle = modal.querySelector('.modal-header h3');
+        const submitButton = modal.querySelector('button[type="submit"]');
+        
+        modalTitle.textContent = 'Edit Prospect';
+        submitButton.textContent = 'Update Prospect';
+        
+        // Store the prospect ID for the update operation
+        modal.dataset.editingProspectId = prospectId;
+        
+        this.openModal('add-prospect-modal');
     }
 
     deleteStakeholder(stakeholderId) {
@@ -972,6 +1070,127 @@ window.backupToOneDrive = async () => {
     } finally {
         button.textContent = originalText;
         button.disabled = false;
+    }
+};
+
+// Outlook Calendar Integration Functions
+window.syncProspectToCalendar = async (prospectId, dateType) => {
+    try {
+        const prospects = dataManager.getProspects();
+        const prospect = prospects.find(p => p.id === prospectId);
+        
+        if (!prospect) {
+            alert('Prospect not found');
+            return;
+        }
+
+        let eventData;
+        
+        if (dateType === 'walk') {
+            eventData = {
+                subject: `Walk-through: ${prospect.name}`,
+                description: `
+                    <p><strong>Project:</strong> ${prospect.name}</p>
+                    <p><strong>Client:</strong> ${prospect.client}</p>
+                    <p><strong>Estimated Value:</strong> $${(prospect.estimatedValue || 0).toLocaleString()}</p>
+                    <p><strong>Win Probability:</strong> ${prospect.probability}%</p>
+                    ${prospect.notes ? `<p><strong>Notes:</strong> ${prospect.notes}</p>` : ''}
+                    <p><em>Automatically created from Construction Dashboard</em></p>
+                `,
+                startTime: new Date(prospect.walkDate + 'T09:00:00').toISOString(),
+                endTime: new Date(prospect.walkDate + 'T11:00:00').toISOString(),
+                location: prospect.client + ' Site',
+                reminderMinutes: 60 // 1 hour reminder
+            };
+        } else if (dateType === 'proposal') {
+            eventData = {
+                subject: `Proposal Due: ${prospect.name}`,
+                description: `
+                    <p><strong>Project:</strong> ${prospect.name}</p>
+                    <p><strong>Client:</strong> ${prospect.client}</p>
+                    <p><strong>Estimated Value:</strong> $${(prospect.estimatedValue || 0).toLocaleString()}</p>
+                    <p><strong>Win Probability:</strong> ${prospect.probability}%</p>
+                    <p><strong>Walk Date:</strong> ${dataManager.formatDate(prospect.walkDate)}</p>
+                    ${prospect.notes ? `<p><strong>Notes:</strong> ${prospect.notes}</p>` : ''}
+                    <p><em>Automatically created from Construction Dashboard</em></p>
+                `,
+                startTime: new Date(prospect.proposalDueDate + 'T08:00:00').toISOString(),
+                endTime: new Date(prospect.proposalDueDate + 'T09:00:00').toISOString(),
+                location: 'Office',
+                reminderMinutes: 24 * 60 // 24 hour reminder (1 day)
+            };
+        }
+
+        const response = await fetch('/api/microsoft365/calendar-event', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(eventData)
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            dashboard.showNotification(`${dateType === 'walk' ? 'Walk-through' : 'Proposal due'} event added to Outlook calendar!`, 'success');
+        } else {
+            dashboard.showNotification(`Failed to create calendar event: ${result.error || 'Unknown error'}`, 'error');
+        }
+        
+    } catch (error) {
+        console.error('Error syncing to calendar:', error);
+        dashboard.showNotification('Error syncing to calendar: ' + error.message, 'error');
+    }
+};
+
+window.syncAllProspectDates = async () => {
+    const button = document.querySelector('button[onclick="syncAllProspectDates()"]');
+    if (button) {
+        const originalText = button.textContent;
+        button.textContent = 'Syncing...';
+        button.disabled = true;
+        
+        try {
+            const prospects = dataManager.getProspects();
+            let syncCount = 0;
+            let errorCount = 0;
+            
+            for (const prospect of prospects) {
+                try {
+                    // Sync walk date
+                    if (prospect.walkDate) {
+                        await syncProspectToCalendar(prospect.id, 'walk');
+                        syncCount++;
+                    }
+                    
+                    // Sync proposal due date
+                    if (prospect.proposalDueDate) {
+                        await syncProspectToCalendar(prospect.id, 'proposal');
+                        syncCount++;
+                    }
+                    
+                    // Small delay to avoid rate limiting
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    
+                } catch (error) {
+                    console.error(`Error syncing prospect ${prospect.name}:`, error);
+                    errorCount++;
+                }
+            }
+            
+            if (errorCount === 0) {
+                dashboard.showNotification(`Successfully synced ${syncCount} calendar events!`, 'success');
+            } else {
+                dashboard.showNotification(`Synced ${syncCount} events with ${errorCount} errors. Check console for details.`, 'warning');
+            }
+            
+        } catch (error) {
+            console.error('Error during bulk sync:', error);
+            dashboard.showNotification('Error during bulk sync: ' + error.message, 'error');
+        } finally {
+            button.textContent = originalText;
+            button.disabled = false;
+        }
     }
 };
 

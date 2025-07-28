@@ -174,9 +174,14 @@
         <div id="prospects" class="tab-content">
             <div class="section-header">
                 <h2><i class="fas fa-handshake"></i> Prospects</h2>
-                <button class="btn btn-primary" onclick="showAddProspectModal()">
-                    <i class="fas fa-plus"></i> Add Prospect
-                </button>
+                <div class="section-actions">
+                    <button class="btn btn-info" onclick="syncAllProspectDates()" title="Sync all prospect dates to Outlook Calendar">
+                        <i class="fas fa-calendar-plus"></i> Sync All to Calendar
+                    </button>
+                    <button class="btn btn-primary" onclick="showAddProspectModal()">
+                        <i class="fas fa-plus"></i> Add Prospect
+                    </button>
+                </div>
             </div>
             <div id="prospects-list" class="prospects-list">
                 <!-- Prospects will be populated by JavaScript -->

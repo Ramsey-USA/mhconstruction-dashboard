@@ -1,0 +1,32 @@
+[
+  {
+    "id": "stake_1",
+    "name": "John Smith",
+    "role": "Project Manager",
+    "company": "Your Construction Company",
+    "email": "john.smith@yourcompany.com",
+    "phone": "(555) 123-4567",
+    "receivesEmails": true,
+    "createdAt": "2025-07-28T01:24:33.287Z"
+  },
+  {
+    "id": "stake_2",
+    "name": "Mike Johnson",
+    "role": "Superintendent",
+    "company": "Your Construction Company",
+    "email": "mike.johnson@yourcompany.com",
+    "phone": "(555) 123-4568",
+    "receivesEmails": true,
+    "createdAt": "2025-07-28T01:24:33.287Z"
+  },
+  {
+    "id": "stake_3",
+    "name": "Sarah Wilson",
+    "role": "Architect",
+    "company": "Design Associates",
+    "email": "sarah.wilson@designassoc.com",
+    "phone": "(555) 234-5678",
+    "receivesEmails": false,
+    "createdAt": "2025-07-28T01:24:33.287Z"
+  }
+]

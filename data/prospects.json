@@ -1,0 +1,15 @@
+[
+  {
+    "id": "pros_1",
+    "name": "Beta Warehouse Project",
+    "client": "Beta Industries",
+    "estimatorId": "stake_1",
+    "walkDate": "2025-08-15",
+    "proposalDueDate": "2025-08-30",
+    "estimatedValue": 950000,
+    "probability": 70,
+    "status": "active",
+    "notes": "Strong relationship with client, good chance of winning",
+    "createdAt": "2025-07-28T01:24:33.287Z"
+  }
+]

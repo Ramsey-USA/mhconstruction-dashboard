@@ -1,0 +1,14 @@
+[
+  {
+    "id": "comm_1",
+    "projectId": "proj_1",
+    "stakeholderId": "stake_3",
+    "type": "RFI",
+    "subject": "Electrical layout clarification",
+    "notes": "Need clarification on electrical outlet placement in conference rooms",
+    "priority": "Medium",
+    "dueDate": "2025-08-05",
+    "status": "Pending",
+    "createdAt": "2025-07-28T01:24:33.287Z"
+  }
+]

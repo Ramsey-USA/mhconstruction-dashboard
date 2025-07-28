@@ -1,0 +1,15 @@
+[
+  {
+    "id": "proj_1",
+    "number": "2025-001",
+    "name": "Alpha Office Building",
+    "client": "Alpha Corp",
+    "projectManagerId": "stake_1",
+    "superintendentId": "stake_2",
+    "startDate": "2025-07-01",
+    "endDate": "2025-12-31",
+    "contractValue": 750000,
+    "status": "active",
+    "createdAt": "2025-07-28T01:24:33.287Z"
+  }
+]

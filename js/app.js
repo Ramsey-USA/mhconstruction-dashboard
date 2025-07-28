@@ -401,7 +401,7 @@ class ConstructionDashboard {
         }
         
         container.innerHTML = stakeholders.map(stakeholder => `
-            <div class="stakeholder-item">
+            <div class="stakeholder-item" data-role="${stakeholder.role}">
                 <div class="stakeholder-header">
                     <div class="stakeholder-avatar">
                         ${stakeholder.name.charAt(0).toUpperCase()}
@@ -412,9 +412,9 @@ class ConstructionDashboard {
                     </div>
                 </div>
                 <div class="stakeholder-contact">
-                    ${stakeholder.email ? `<div class="contact-item"><i class="fas fa-envelope"></i> ${stakeholder.email}</div>` : ''}
-                    ${stakeholder.phone ? `<div class="contact-item"><i class="fas fa-phone"></i> ${stakeholder.phone}</div>` : ''}
-                    ${stakeholder.receivesEmails ? '<div class="contact-item"><i class="fas fa-mail-bulk"></i> Receives daily emails</div>' : ''}
+                    ${stakeholder.email ? `<div class="contact-item email-item" onclick="window.location.href='mailto:${stakeholder.email}'" title="Send email to ${stakeholder.name}"><i class="fas fa-envelope"></i> ${stakeholder.email}</div>` : ''}
+                    ${stakeholder.phone ? `<div class="contact-item phone-item" onclick="window.location.href='tel:${stakeholder.phone}'" title="Call ${stakeholder.name}"><i class="fas fa-phone"></i> ${stakeholder.phone}</div>` : ''}
+                    ${stakeholder.receivesEmails ? '<div class="contact-item receives-emails"><i class="fas fa-mail-bulk"></i> Receives daily emails</div>' : ''}
                 </div>
                 <div class="stakeholder-actions">
                     <button class="btn btn-primary" onclick="dashboard.editStakeholder('${stakeholder.id}')">
@@ -608,17 +608,28 @@ class ConstructionDashboard {
             const selectedProjects = Array.from(document.getElementById('recipient-projects').selectedOptions)
                 .map(option => option.value);
             
+            const stakeholderId = document.getElementById('recipient-stakeholder').value;
+            
             const recipient = {
-                stakeholderId: document.getElementById('recipient-stakeholder').value,
+                stakeholderId: stakeholderId,
                 projectIds: selectedProjects,
                 sendTime: document.getElementById('recipient-time').value,
                 frequency: document.getElementById('recipient-frequency').value
             };
             
+            // Add the email recipient
             await dataManager.addEmailRecipient(recipient);
+            
+            // Update the stakeholder to indicate they now receive emails
+            const stakeholder = dataManager.getStakeholders().find(s => s.id === stakeholderId);
+            if (stakeholder && !stakeholder.receivesEmails) {
+                await dataManager.updateStakeholder(stakeholderId, { receivesEmails: true });
+            }
+            
             this.closeModal('add-recipient-modal');
             this.showNotification('Email recipient added successfully!', 'success');
             this.loadEmailRecipients();
+            this.loadStakeholders(); // Refresh stakeholders list to show updated status
             e.target.reset();
         } catch (error) {
             console.error('Error adding email recipient:', error);
@@ -666,9 +677,9 @@ class ConstructionDashboard {
         
         // Email recipient dropdowns
         const recipientStakeholderSelect = document.getElementById('recipient-stakeholder');
-        const emailStakeholders = stakeholders.filter(s => s.receivesEmails);
+        // Show all stakeholders, not just those who currently receive emails
         recipientStakeholderSelect.innerHTML = '<option value="">Select Stakeholder</option>' +
-            emailStakeholders.map(s => `<option value="${s.id}">${s.name} (${s.role})</option>`).join('');
+            stakeholders.map(s => `<option value="${s.id}">${s.name} (${s.role})</option>`).join('');
         
         const recipientProjectsSelect = document.getElementById('recipient-projects');
         recipientProjectsSelect.innerHTML = projects.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
@@ -684,14 +695,20 @@ class ConstructionDashboard {
 
     // Modal Management
     showAddProjectModal() {
+        // Populate project manager and superintendent dropdowns
+        this.populateDropdowns();
         document.getElementById('add-project-modal').style.display = 'block';
     }
 
     showAddCommunicationModal() {
+        // Populate project and stakeholder dropdowns
+        this.populateDropdowns();
         document.getElementById('add-communication-modal').style.display = 'block';
     }
 
     showAddProspectModal() {
+        // Populate estimator dropdown
+        this.populateDropdowns();
         document.getElementById('add-prospect-modal').style.display = 'block';
     }
 
@@ -700,6 +717,8 @@ class ConstructionDashboard {
     }
 
     showAddRecipientModal() {
+        // Populate stakeholder dropdown with current stakeholders who receive emails
+        this.populateDropdowns();
         document.getElementById('add-recipient-modal').style.display = 'block';
     }
 
@@ -753,7 +772,24 @@ class ConstructionDashboard {
 
     deleteEmailRecipient(recipientId) {
         if (confirm('Are you sure you want to remove this email recipient?')) {
+            // Get the recipient before deleting to check stakeholder
+            const recipients = dataManager.getEmailRecipients();
+            const recipientToDelete = recipients.find(r => r.id === recipientId);
+            
             dataManager.deleteEmailRecipient(recipientId);
+            
+            // Check if this stakeholder has any other email recipients
+            if (recipientToDelete) {
+                const remainingRecipients = dataManager.getEmailRecipients();
+                const hasOtherRecipients = remainingRecipients.some(r => r.stakeholderId === recipientToDelete.stakeholderId);
+                
+                // If no other recipients for this stakeholder, set receivesEmails to false
+                if (!hasOtherRecipients) {
+                    dataManager.updateStakeholder(recipientToDelete.stakeholderId, { receivesEmails: false });
+                    this.loadStakeholders(); // Refresh stakeholders list
+                }
+            }
+            
             this.showNotification('Email recipient removed!', 'success');
             this.loadEmailRecipients();
         }
@@ -942,5 +978,54 @@ document.addEventListener('DOMContentLoaded', () => {
     if (m365Tab) {
         loadMicrosoft365Status();
     }
+    
+    // Update footer status indicators
+    updateFooterStatus();
 });
+
+// Update footer status indicators
+function updateFooterStatus() {
+    // Update Microsoft 365 status in footer
+    fetch('/api/microsoft365/status')
+        .then(response => response.json())
+        .then(data => {
+            const footerM365Status = document.getElementById('footer-m365-status');
+            const footerBackupStatus = document.getElementById('footer-backup-status');
+            
+            if (footerM365Status) {
+                if (data.isAuthenticated) {
+                    footerM365Status.className = 'status-indicator connected';
+                    footerM365Status.title = 'Microsoft 365 Connected';
+                } else {
+                    footerM365Status.className = 'status-indicator disconnected';
+                    footerM365Status.title = 'Microsoft 365 Not Connected';
+                }
+            }
+            
+            if (footerBackupStatus) {
+                if (data.isAuthenticated && data.oneDriveEnabled) {
+                    footerBackupStatus.className = 'status-indicator connected';
+                    footerBackupStatus.title = 'Cloud Backup Active';
+                } else {
+                    footerBackupStatus.className = 'status-indicator warning';
+                    footerBackupStatus.title = 'Cloud Backup Not Configured';
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error updating footer status:', error);
+            const footerM365Status = document.getElementById('footer-m365-status');
+            const footerBackupStatus = document.getElementById('footer-backup-status');
+            
+            if (footerM365Status) {
+                footerM365Status.className = 'status-indicator disconnected';
+                footerM365Status.title = 'Microsoft 365 Error';
+            }
+            
+            if (footerBackupStatus) {
+                footerBackupStatus.className = 'status-indicator disconnected';
+                footerBackupStatus.title = 'Cloud Backup Error';
+            }
+        });
+}
 

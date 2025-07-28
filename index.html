@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Construction Project Dashboard</title>
+    <title>MH Construction Project Dashboard</title>
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="css/styles.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -15,7 +15,7 @@
         <div class="header-content">
             <div class="logo">
                 <i class="fas fa-hard-hat"></i>
-                <h1>Construction Dashboard</h1>
+                <h1>MH Construction Dashboard</h1>
             </div>
             <div class="header-actions">
                 <button class="btn btn-primary" onclick="exportToExcel()">
@@ -625,11 +625,77 @@
         </div>
     </div>
 
-    <!-- Notification -->
-    <div id="notification" class="notification">
-        <span id="notification-message"></span>
-        <button onclick="hideNotification()">&times;</button>
-    </div>
+    <!-- Notification Container -->
+    <div id="notification-container"></div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-section">
+                <div class="footer-logo">
+                    <i class="fas fa-hard-hat"></i>
+                    <span>MH Construction</span>
+                </div>
+                <p class="footer-description">
+                    Professional construction project management dashboard designed to streamline communications, track progress, and enhance team collaboration.
+                </p>
+            </div>
+            
+            <div class="footer-section">
+                <h4>Features</h4>
+                <ul class="footer-links">
+                    <li><i class="fas fa-check"></i> Project Management</li>
+                    <li><i class="fas fa-check"></i> Communication Tracking</li>
+                    <li><i class="fas fa-check"></i> Stakeholder Management</li>
+                    <li><i class="fas fa-check"></i> Automated Reporting</li>
+                </ul>
+            </div>
+            
+            <div class="footer-section">
+                <h4>Support</h4>
+                <ul class="footer-links">
+                    <li><a href="#"><i class="fas fa-question-circle"></i> Help Center</a></li>
+                    <li><a href="#"><i class="fas fa-book"></i> Documentation</a></li>
+                    <li><a href="#"><i class="fas fa-envelope"></i> Contact Support</a></li>
+                    <li><a href="#"><i class="fas fa-phone"></i> Call Support</a></li>
+                </ul>
+            </div>
+            
+            <div class="footer-section">
+                <h4>Integration</h4>
+                <div class="integration-status">
+                    <div class="integration-item">
+                        <i class="fab fa-microsoft"></i>
+                        <span>Microsoft 365</span>
+                        <span class="status-indicator" id="footer-m365-status">●</span>
+                    </div>
+                    <div class="integration-item">
+                        <i class="fas fa-server"></i>
+                        <span>Local Storage</span>
+                        <span class="status-indicator connected">●</span>
+                    </div>
+                    <div class="integration-item">
+                        <i class="fas fa-cloud"></i>
+                        <span>Cloud Backup</span>
+                        <span class="status-indicator" id="footer-backup-status">●</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer-bottom">
+            <div class="footer-bottom-content">
+                <p>&copy; 2025 MH Construction Dashboard. Built with modern web technologies for construction professionals.</p>
+                <div class="footer-tech">
+                    <span>Powered by:</span>
+                    <i class="fab fa-html5" title="HTML5"></i>
+                    <i class="fab fa-css3-alt" title="CSS3"></i>
+                    <i class="fab fa-js-square" title="JavaScript"></i>
+                    <i class="fab fa-node-js" title="Node.js"></i>
+                </div>
+            </div>
+        </div>
+    </footer>
 
     <!-- Scripts -->
     <script src="js/data-server.js"></script>

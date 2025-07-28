@@ -290,8 +290,11 @@ class DataManager {
         const projects = this.getProjects();
         const communications = this.getCommunications();
         
-        const activeProjects = projects.filter(p => p.status === 'active').length;
-        const pendingItems = communications.filter(c => c.status === 'pending' || c.status === 'in-progress').length;
+        // Count projects that are in_progress or planning as active
+        const activeProjects = projects.filter(p => p.status === 'in_progress' || p.status === 'planning').length;
+        const pendingItems = communications.filter(c => 
+            c.status && (c.status.toLowerCase() === 'pending' || c.status.toLowerCase() === 'in progress')
+        ).length;
         const overdueItems = communications.filter(c => this.isOverdue(c.dueDate)).length;
         const dueThisWeek = communications.filter(c => this.isDueSoon(c.dueDate, 7)).length;
 
@@ -488,108 +491,86 @@ class DataManager {
 
     // Load sample data for demonstration
     loadSampleData() {
-        // Sample stakeholders
+        // Sample stakeholders - exactly 3 examples
         const sampleStakeholders = [
             {
                 id: 'stake_1',
-                name: 'John Smith',
+                name: 'John Mitchell',
                 role: 'Project Manager',
-                company: 'ABC Construction',
-                email: 'john.smith@abcconstruction.com',
+                company: 'MH Construction',
+                email: 'john.mitchell@mhconstruction.com',
                 phone: '(555) 123-4567',
                 receivesEmails: true,
                 createdAt: new Date().toISOString()
             },
             {
                 id: 'stake_2',
-                name: 'Mike Johnson',
-                role: 'Superintendent',
-                company: 'ABC Construction',
-                email: 'mike.johnson@abcconstruction.com',
-                phone: '(555) 123-4568',
+                name: 'Sarah Chen',
+                role: 'Senior Architect',
+                company: 'Design Partners LLC',
+                email: 'sarah.chen@designpartners.com',
+                phone: '(555) 234-5678',
                 receivesEmails: true,
                 createdAt: new Date().toISOString()
             },
             {
                 id: 'stake_3',
-                name: 'Sarah Wilson',
-                role: 'Architect',
-                company: 'Design Associates',
-                email: 'sarah.wilson@designassoc.com',
-                phone: '(555) 234-5678',
-                receivesEmails: false,
-                createdAt: new Date().toISOString()
-            },
-            {
-                id: 'stake_4',
-                name: 'Tom Brown',
-                role: 'Estimator',
-                company: 'ABC Construction',
-                email: 'tom.brown@abcconstruction.com',
-                phone: '(555) 123-4569',
-                receivesEmails: false,
-                createdAt: new Date().toISOString()
-            },
-            {
-                id: 'stake_5',
-                name: "Mike's Electric",
-                role: 'Subcontractor',
-                company: "Mike's Electric LLC",
-                email: 'info@mikeselectric.com',
+                name: 'Michael Rodriguez',
+                role: 'Site Superintendent',
+                company: 'MH Construction',
+                email: 'michael.rodriguez@mhconstruction.com',
                 phone: '(555) 345-6789',
                 receivesEmails: false,
                 createdAt: new Date().toISOString()
             }
         ];
 
-        // Sample projects
+        // Sample projects - exactly 3 examples
         const sampleProjects = [
             {
                 id: 'proj_1',
-                number: '2024-001',
-                name: 'Alpha Office Building',
-                client: 'Alpha Corp',
+                number: '2025-001',
+                name: 'Downtown Office Complex',
+                client: 'Metro Development Corp',
                 projectManagerId: 'stake_1',
-                superintendentId: 'stake_2',
-                status: 'active',
-                startDate: '2024-01-15',
-                endDate: '2024-08-15',
-                contractValue: 2500000,
+                superintendentId: 'stake_3',
+                status: 'in_progress',
+                startDate: '2025-01-15',
+                endDate: '2025-12-15',
+                contractValue: 5500000,
                 createdAt: new Date().toISOString()
             },
             {
                 id: 'proj_2',
-                number: '2024-002',
-                name: 'Beta Warehouse',
-                client: 'Beta Industries',
+                number: '2025-002',
+                name: 'Industrial Warehouse Expansion',
+                client: 'LogiCorp Industries',
                 projectManagerId: 'stake_1',
-                superintendentId: 'stake_2',
-                status: 'active',
-                startDate: '2024-02-01',
-                endDate: '2024-09-30',
-                contractValue: 1800000,
+                superintendentId: 'stake_3',
+                status: 'planning',
+                startDate: '2025-03-01',
+                endDate: '2025-10-30',
+                contractValue: 3200000,
                 createdAt: new Date().toISOString()
             },
             {
                 id: 'proj_3',
-                number: '2024-003',
-                name: 'Gamma Retail Center',
-                client: 'Gamma Development',
+                number: '2025-003',
+                name: 'Residential Mixed-Use Development',
+                client: 'Urban Living Partners',
                 projectManagerId: 'stake_1',
-                status: 'planning',
-                startDate: '2024-04-01',
-                endDate: '2024-12-15',
-                contractValue: 3200000,
+                status: 'completed',
+                startDate: '2024-06-01',
+                endDate: '2024-12-31',
+                contractValue: 8900000,
                 createdAt: new Date().toISOString()
             }
         ];
 
-        // Sample communications
+        // Sample communications - exactly 3 examples
         const today = new Date();
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
-        const nextWeek = new Date(today);
-        nextWeek.setDate(nextWeek.getDate() + 7);
         const lastWeek = new Date(today);
         lastWeek.setDate(lastWeek.getDate() - 7);
 
@@ -597,92 +578,81 @@ class DataManager {
             {
                 id: 'comm_1',
                 projectId: 'proj_1',
-                stakeholderId: 'stake_3',
+                stakeholderId: 'stake_2',
                 type: 'RFI',
-                subject: 'HVAC routing clarification',
-                notes: 'Need clarification on HVAC routing through structural beams on 3rd floor',
+                subject: 'Structural beam specifications clarification',
+                notes: 'Need clarification on steel beam specifications for floors 8-12 structural framework',
                 priority: 'high',
-                status: 'pending',
+                status: 'Pending',
                 dueDate: tomorrow.toISOString().split('T')[0],
                 createdAt: lastWeek.toISOString()
             },
             {
                 id: 'comm_2',
-                projectId: 'proj_1',
-                stakeholderId: 'stake_5',
-                type: 'Lien Release',
-                subject: 'January work lien release',
-                notes: 'Conditional lien release for January electrical work - $45,000',
-                priority: 'medium',
-                status: 'pending',
-                dueDate: new Date(today.getTime() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 2 days overdue
-                createdAt: new Date(today.getTime() - 10 * 24 * 60 * 60 * 1000).toISOString()
-            },
-            {
-                id: 'comm_3',
                 projectId: 'proj_2',
                 stakeholderId: 'stake_3',
                 type: 'Submittal',
-                subject: 'Structural steel shop drawings',
-                notes: 'Shop drawings for main structural steel frame',
-                priority: 'high',
-                status: 'in-progress',
-                dueDate: nextWeek.toISOString().split('T')[0],
-                createdAt: new Date(today.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString()
+                subject: 'HVAC system design approval',
+                notes: 'Industrial HVAC system design and installation plans require client approval',
+                priority: 'medium',
+                status: 'In Progress',
+                dueDate: new Date(today.getTime() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                createdAt: new Date(today.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString()
             },
             {
-                id: 'comm_4',
+                id: 'comm_3',
                 projectId: 'proj_1',
                 stakeholderId: 'stake_1',
                 type: 'Change Order',
-                subject: 'Additional electrical outlets - 2nd floor',
-                notes: 'Client requested 12 additional outlets in open office area',
-                priority: 'medium',
-                status: 'completed',
-                dueDate: new Date(today.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                createdAt: new Date(today.getTime() - 8 * 24 * 60 * 60 * 1000).toISOString()
-            },
-            {
-                id: 'comm_5',
-                projectId: 'proj_2',
-                stakeholderId: 'stake_5',
-                type: 'Submittal',
-                subject: 'Electrical panel schedule',
-                notes: 'Main electrical panel schedule and load calculations',
-                priority: 'high',
-                status: 'pending',
-                dueDate: new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                createdAt: new Date(today.getTime() - 2 * 24 * 60 * 60 * 1000).toISOString()
+                subject: 'Additional parking spaces request',
+                notes: 'Client requested 25 additional parking spaces in underground garage level B2',
+                priority: 'low',
+                status: 'Completed',
+                dueDate: new Date(today.getTime() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                createdAt: new Date(today.getTime() - 10 * 24 * 60 * 60 * 1000).toISOString()
             }
         ];
 
-        // Sample prospects
+        // Sample prospects - exactly 3 examples
         const sampleProspects = [
             {
                 id: 'pros_1',
-                name: 'Delta Manufacturing Plant',
-                client: 'Delta Industries',
-                estimatorId: 'stake_4',
-                walkDate: new Date(today.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                proposalDueDate: new Date(today.getTime() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                estimatedValue: 4500000,
-                probability: 75,
-                notes: 'Strong relationship with client. Competitive advantage on timeline.',
+                name: 'Tech Campus Phase II',
+                client: 'Innovation Technologies Inc',
+                estimatorId: 'stake_1',
+                walkDate: new Date(today.getTime() - 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                proposalDueDate: new Date(today.getTime() + 8 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                estimatedValue: 12500000,
+                probability: 80,
+                notes: 'Excellent relationship with client from Phase I. Strong competitive position.',
                 status: 'active',
-                createdAt: new Date(today.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString()
+                createdAt: new Date(today.getTime() - 10 * 24 * 60 * 60 * 1000).toISOString()
             },
             {
                 id: 'pros_2',
-                name: 'Echo Residential Complex',
-                client: 'Echo Development',
-                estimatorId: 'stake_4',
-                walkDate: new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                proposalDueDate: new Date(today.getTime() + 12 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                estimatedValue: 6200000,
-                probability: 50,
-                notes: 'New client. Price will be key factor.',
+                name: 'Municipal Sports Complex',
+                client: 'City of Riverside',
+                estimatorId: 'stake_1',
+                walkDate: new Date(today.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                proposalDueDate: new Date(today.getTime() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                estimatedValue: 18700000,
+                probability: 60,
+                notes: 'Public bid with 4 competitors. Design-build approach gives us advantage.',
                 status: 'active',
-                createdAt: new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString()
+                createdAt: new Date(today.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString()
+            },
+            {
+                id: 'pros_3',
+                name: 'Luxury Hotel Renovation',
+                client: 'Grandview Hospitality Group',
+                estimatorId: 'stake_1',
+                walkDate: new Date(today.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                proposalDueDate: new Date(today.getTime() + 20 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                estimatedValue: 9300000,
+                probability: 45,
+                notes: 'Challenging timeline and budget constraints. Premium finishes required.',
+                status: 'active',
+                createdAt: new Date(today.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString()
             }
         ];
 
@@ -698,7 +668,7 @@ class DataManager {
             },
             {
                 id: 'recip_2',
-                stakeholderId: 'stake_2',
+                stakeholderId: 'stake_3',
                 projectIds: ['proj_1', 'proj_2'],
                 sendTime: '17:00',
                 frequency: 'daily',
@@ -713,7 +683,7 @@ class DataManager {
         this.saveProspects(sampleProspects);
         this.saveEmailRecipients(sampleEmailRecipients);
 
-        console.log('Sample data loaded successfully');
+        console.log('Sample data loaded successfully - 3 examples each for stakeholders, projects, communications, and prospects');
     }
 }
 

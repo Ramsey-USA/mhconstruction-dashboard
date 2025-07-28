@@ -212,8 +212,11 @@ app.get('/api/dashboard/stats', async (req, res) => {
         const projects = await readDataFile(dataFiles.projects);
         const communications = await readDataFile(dataFiles.communications);
         
-        const activeProjects = projects.filter(p => p.status === 'active').length;
-        const pendingItems = communications.filter(c => c.status === 'pending' || c.status === 'in-progress').length;
+        // Count projects that are in_progress or planning as active
+        const activeProjects = projects.filter(p => p.status === 'in_progress' || p.status === 'planning').length;
+        const pendingItems = communications.filter(c => 
+            c.status && (c.status.toLowerCase() === 'pending' || c.status.toLowerCase() === 'in progress')
+        ).length;
         
         // Calculate overdue and due this week
         const today = new Date();

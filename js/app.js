@@ -16,12 +16,31 @@ class ConstructionDashboard {
 
     // Event Binding
     bindEvents() {
-        // Form submissions
-        document.getElementById('add-project-form').addEventListener('submit', (e) => this.handleAddProject(e));
-        document.getElementById('add-communication-form').addEventListener('submit', (e) => this.handleAddCommunication(e));
-        document.getElementById('add-prospect-form').addEventListener('submit', (e) => this.handleAddProspect(e));
-        document.getElementById('add-stakeholder-form').addEventListener('submit', (e) => this.handleAddStakeholder(e));
-        document.getElementById('add-recipient-form').addEventListener('submit', (e) => this.handleAddEmailRecipient(e));
+        // Form submissions - add null checks
+        const addProjectForm = document.getElementById('add-project-form');
+        if (addProjectForm) {
+            addProjectForm.addEventListener('submit', (e) => this.handleAddProject(e));
+        }
+        
+        const addCommunicationForm = document.getElementById('add-communication-form');
+        if (addCommunicationForm) {
+            addCommunicationForm.addEventListener('submit', (e) => this.handleAddCommunication(e));
+        }
+        
+        const addProspectForm = document.getElementById('add-prospect-form');
+        if (addProspectForm) {
+            addProspectForm.addEventListener('submit', (e) => this.handleAddProspect(e));
+        }
+        
+        const addStakeholderForm = document.getElementById('add-stakeholder-form');
+        if (addStakeholderForm) {
+            addStakeholderForm.addEventListener('submit', (e) => this.handleAddStakeholder(e));
+        }
+        
+        const addRecipientForm = document.getElementById('add-recipient-form');
+        if (addRecipientForm) {
+            addRecipientForm.addEventListener('submit', (e) => this.handleAddEmailRecipient(e));
+        }
 
         // Modal close events
         document.addEventListener('click', (e) => {
@@ -30,14 +49,27 @@ class ConstructionDashboard {
             }
         });
 
-        // Settings changes
-        document.getElementById('auto-send-enabled').addEventListener('change', (e) => this.saveSettings());
-        document.getElementById('send-time').addEventListener('change', (e) => this.saveSettings());
-        document.getElementById('email-signature').addEventListener('change', (e) => this.saveSettings());
+        // Settings changes - add null checks
+        const autoSendEnabled = document.getElementById('auto-send-enabled');
+        if (autoSendEnabled) {
+            autoSendEnabled.addEventListener('change', (e) => this.saveSettings());
+        }
+        
+        const sendTime = document.getElementById('send-time');
+        if (sendTime) {
+            sendTime.addEventListener('change', (e) => this.saveSettings());
+        }
+        
+        const emailSignature = document.getElementById('email-signature');
+        if (emailSignature) {
+            emailSignature.addEventListener('change', (e) => this.saveSettings());
+        }
     }
 
     // Tab Management
-    showTab(tabName) {
+    showTab(tabName, clickedElement = null) {
+        console.log(`Switching to tab: ${tabName}`);
+        
         // Hide all tabs
         document.querySelectorAll('.tab-content').forEach(tab => {
             tab.classList.remove('active');
@@ -49,10 +81,26 @@ class ConstructionDashboard {
         });
         
         // Show selected tab
-        document.getElementById(tabName).classList.add('active');
+        const targetTab = document.getElementById(tabName);
+        if (targetTab) {
+            targetTab.classList.add('active');
+            console.log(`Tab ${tabName} activated successfully`);
+        } else {
+            console.error(`Tab element with id '${tabName}' not found`);
+        }
         
         // Add active class to clicked nav tab
-        event.target.classList.add('active');
+        if (clickedElement) {
+            clickedElement.classList.add('active');
+            console.log('Active class added to clicked element');
+        } else {
+            // Fallback: find the nav tab by matching the onclick attribute
+            const navTab = document.querySelector(`.nav-tab[onclick*="${tabName}"]`);
+            if (navTab) {
+                navTab.classList.add('active');
+                console.log('Active class added via fallback method');
+            }
+        }
         
         this.currentTab = tabName;
         
@@ -253,7 +301,23 @@ class ConstructionDashboard {
 
     // Communications Management
     loadCommunications() {
+        this.updateCommunicationsFilters();
         this.filterCommunications();
+    }
+
+    updateCommunicationsFilters() {
+        const projects = dataManager.getProjects();
+        const projectFilter = document.getElementById('project-filter');
+        const currentProject = projectFilter.value;
+        
+        projectFilter.innerHTML = '<option value="">All Projects</option>';
+        projects.forEach(project => {
+            const option = document.createElement('option');
+            option.value = project.id;
+            option.textContent = project.name;
+            if (project.id === currentProject) option.selected = true;
+            projectFilter.appendChild(option);
+        });
     }
 
     filterCommunications() {
@@ -274,6 +338,25 @@ class ConstructionDashboard {
         }
         
         this.displayCommunications(communications);
+        this.updateCommunicationsCounter(communications.length, dataManager.getCommunications().length);
+    }
+
+    updateCommunicationsCounter(filtered, total) {
+        // Add or update communications counter
+        let counter = document.querySelector('.communications-counter');
+        if (!counter) {
+            counter = document.createElement('div');
+            counter.className = 'communications-counter';
+            const filterSection = document.querySelector('.filters');
+            filterSection.parentNode.insertBefore(counter, filterSection.nextSibling);
+        }
+        
+        const overdueCount = dataManager.getCommunications().filter(c => dataManager.isOverdue(c.dueDate)).length;
+        counter.innerHTML = `
+            <i class="fas fa-comments"></i>
+            Showing ${filtered} of ${total} communications
+            ${overdueCount > 0 ? `<span style="color: #ffeb3b; margin-left: 1rem;"><i class="fas fa-exclamation-triangle"></i> ${overdueCount} overdue</span>` : ''}
+        `;
     }
 
     displayCommunications(communications) {
@@ -282,15 +365,21 @@ class ConstructionDashboard {
         const container = document.getElementById('communications-list');
         
         if (communications.length === 0) {
-            container.innerHTML = '<p class="text-center" style="color: #7f8c8d; padding: 2rem;">No communications found.</p>';
+            container.innerHTML = '';
             return;
         }
         
-        // Sort by due date and priority
+        // Sort by priority: overdue first, then by due date
         communications.sort((a, b) => {
-            if (dataManager.isOverdue(a.dueDate) && !dataManager.isOverdue(b.dueDate)) return -1;
-            if (!dataManager.isOverdue(a.dueDate) && dataManager.isOverdue(b.dueDate)) return 1;
-            return new Date(a.dueDate || '9999-12-31') - new Date(b.dueDate || '9999-12-31');
+            const aOverdue = dataManager.isOverdue(a.dueDate);
+            const bOverdue = dataManager.isOverdue(b.dueDate);
+            
+            if (aOverdue && !bOverdue) return -1;
+            if (!aOverdue && bOverdue) return 1;
+            
+            const aDate = new Date(a.dueDate || '9999-12-31');
+            const bDate = new Date(b.dueDate || '9999-12-31');
+            return aDate - bDate;
         });
         
         container.innerHTML = communications.map(comm => {
@@ -299,27 +388,57 @@ class ConstructionDashboard {
             const isOverdue = dataManager.isOverdue(comm.dueDate);
             const daysUntil = dataManager.getDaysUntilDue(comm.dueDate);
             
+            // Determine urgency class
+            let urgencyClass = '';
+            if (isOverdue) {
+                urgencyClass = 'overdue-priority';
+            } else if (daysUntil !== null && daysUntil <= 3) {
+                urgencyClass = 'urgent-priority';
+            }
+            
             return `
-                <div class="communication-item comm-type-${comm.type.toLowerCase().replace(' ', '-')}">
+                <div class="communication-item comm-type-${comm.type.toLowerCase().replace(' ', '-')} ${urgencyClass}">
                     <div class="communication-header">
                         <div class="communication-title">
                             <h4>${comm.subject}</h4>
                             <div class="communication-meta">
-                                <span><i class="fas fa-building"></i> ${project?.name || 'Unknown Project'}</span>
-                                <span><i class="fas fa-user"></i> ${stakeholder?.name || 'Unknown Stakeholder'}</span>
-                                <span><i class="fas fa-tag"></i> ${comm.type}</span>
-                                ${comm.dueDate ? `<span><i class="fas fa-calendar"></i> Due: ${dataManager.formatDate(comm.dueDate)}</span>` : ''}
+                                <div class="communication-meta-item project-meta">
+                                    <i class="fas fa-building"></i>
+                                    <span>${project?.name || 'Unknown Project'}</span>
+                                </div>
+                                <div class="communication-meta-item stakeholder-meta">
+                                    <i class="fas fa-user"></i>
+                                    <span>${stakeholder?.name || 'Unknown Stakeholder'}</span>
+                                </div>
+                                <div class="communication-meta-item type-meta">
+                                    <i class="fas fa-tag"></i>
+                                    <span>${comm.type}</span>
+                                </div>
+                                ${comm.dueDate ? `
+                                    <div class="communication-meta-item date-meta">
+                                        <i class="fas fa-calendar${isOverdue ? '-times' : '-check'}"></i>
+                                        <span>Due: ${dataManager.formatDate(comm.dueDate)}${daysUntil !== null ? ` (${daysUntil > 0 ? daysUntil + ' days' : 'today'})` : ''}</span>
+                                    </div>
+                                ` : ''}
                             </div>
                         </div>
-                        <span class="communication-status status-${isOverdue ? 'overdue' : comm.status.replace(' ', '-')}">${isOverdue ? 'OVERDUE' : comm.status}</span>
+                        <div class="communication-status-container">
+                            <span class="type-badge">${comm.type}</span>
+                            <span class="communication-status status-${isOverdue ? 'overdue' : comm.status.replace(' ', '-').toLowerCase()}">${isOverdue ? 'OVERDUE' : comm.status}</span>
+                        </div>
                     </div>
-                    ${comm.notes ? `<div class="communication-content"><p>${comm.notes}</p></div>` : ''}
+                    ${comm.notes ? `<div class="communication-content">${comm.notes}</div>` : ''}
                     <div class="communication-actions">
                         <button class="btn btn-primary" onclick="dashboard.editCommunication('${comm.id}')">
                             <i class="fas fa-edit"></i> Edit
                         </button>
-                        <button class="btn btn-success" onclick="dashboard.markCompleted('${comm.id}')">
-                            <i class="fas fa-check"></i> Complete
+                        ${comm.status !== 'Completed' ? `
+                            <button class="btn btn-success" onclick="dashboard.markCompleted('${comm.id}')">
+                                <i class="fas fa-check"></i> Complete
+                            </button>
+                        ` : ''}
+                        <button class="btn btn-info" onclick="dashboard.duplicateCommunication('${comm.id}')">
+                            <i class="fas fa-copy"></i> Duplicate
                         </button>
                         <button class="btn btn-danger" onclick="dashboard.deleteCommunication('${comm.id}')">
                             <i class="fas fa-trash"></i> Delete
@@ -805,6 +924,34 @@ class ConstructionDashboard {
         this.loadDashboard();
     }
 
+    duplicateCommunication(communicationId) {
+        const communications = dataManager.getCommunications();
+        const comm = communications.find(c => c.id === communicationId);
+        
+        if (comm) {
+            const duplicateComm = {
+                ...comm,
+                id: dataManager.generateId(),
+                subject: comm.subject + ' (Copy)',
+                status: 'Pending',
+                createdAt: new Date().toISOString(),
+                completedAt: null
+            };
+            
+            communications.push(duplicateComm);
+            dataManager.saveCommunications(communications);
+            this.showNotification('Communication duplicated successfully!', 'success');
+            this.loadCommunications();
+        }
+    }
+
+    clearCommunicationFilters() {
+        document.getElementById('project-filter').value = '';
+        document.getElementById('type-filter').value = '';
+        document.getElementById('status-filter').value = '';
+        this.filterCommunications();
+    }
+
     deleteCommunication(communicationId) {
         if (confirm('Are you sure you want to delete this communication?')) {
             dataManager.deleteCommunication(communicationId);
@@ -985,6 +1132,7 @@ window.showAddStakeholderModal = () => dashboard.showAddStakeholderModal();
 window.showAddRecipientModal = () => dashboard.showAddRecipientModal();
 window.closeModal = (modalId) => dashboard.closeModal(modalId);
 window.filterCommunications = () => dashboard.filterCommunications();
+window.clearCommunicationFilters = () => dashboard.clearCommunicationFilters();
 window.updateEmailPreview = () => dashboard.updateEmailPreview();
 window.hideNotification = () => {
     const notification = document.getElementById('notification');

@@ -1,15 +1,41 @@
 [
   {
     "id": "pros_1",
-    "name": "Beta Warehouse Project",
-    "client": "Beta Industries",
+    "name": "Delta Warehouse Expansion",
+    "client": "Delta Industries",
     "estimatorId": "stake_1",
     "walkDate": "2025-08-15",
     "proposalDueDate": "2025-08-30",
     "estimatedValue": 950000,
-    "probability": 70,
+    "probability": 75,
     "status": "active",
-    "notes": "Strong relationship with client, good chance of winning",
-    "createdAt": "2025-07-28T01:24:33.287Z"
+    "notes": "Strong relationship with client, excellent opportunity",
+    "createdAt": "2025-07-28T02:47:26.095Z"
+  },
+  {
+    "id": "pros_2",
+    "name": "Epsilon Shopping Center",
+    "client": "Epsilon Retail Group",
+    "estimatorId": "stake_1",
+    "walkDate": "2025-08-20",
+    "proposalDueDate": "2025-09-10",
+    "estimatedValue": 2200000,
+    "probability": 60,
+    "status": "active",
+    "notes": "Competitive bid process, strong technical proposal needed",
+    "createdAt": "2025-07-28T02:47:26.095Z"
+  },
+  {
+    "id": "pros_3",
+    "name": "Zeta Manufacturing Facility",
+    "client": "Zeta Manufacturing",
+    "estimatorId": "stake_1",
+    "walkDate": "2025-09-05",
+    "proposalDueDate": "2025-09-25",
+    "estimatedValue": 1750000,
+    "probability": 80,
+    "status": "active",
+    "notes": "Previous client, high probability of award",
+    "createdAt": "2025-07-28T02:47:26.095Z"
   }
 ]

@@ -33,26 +33,27 @@
     </header>
 
     <!-- Navigation -->
+        <!-- Navigation -->
     <nav class="nav-tabs">
-        <button class="nav-tab active" onclick="showTab('dashboard')">
-            <i class="fas fa-tachometer-alt"></i> Dashboard
+        <button class="nav-tab active" onclick="showTabSafe('dashboard', this)">
+            <i class="fas fa-chart-line"></i> Dashboard
         </button>
-        <button class="nav-tab" onclick="showTab('projects')">
+        <button class="nav-tab" onclick="showTabSafe('projects', this)">
             <i class="fas fa-building"></i> Projects
         </button>
-        <button class="nav-tab" onclick="showTab('communications')">
+        <button class="nav-tab" onclick="showTabSafe('communications', this)">
             <i class="fas fa-comments"></i> Communications
         </button>
-        <button class="nav-tab" onclick="showTab('prospects')">
+        <button class="nav-tab" onclick="showTabSafe('prospects', this)">
             <i class="fas fa-handshake"></i> Prospects
         </button>
-        <button class="nav-tab" onclick="showTab('stakeholders')">
+        <button class="nav-tab" onclick="showTabSafe('stakeholders', this)">
             <i class="fas fa-users"></i> Stakeholders
         </button>
-        <button class="nav-tab" onclick="showTab('emails')">
-            <i class="fas fa-mail-bulk"></i> Email Setup
+        <button class="nav-tab" onclick="showTabSafe('emails', this)">
+            <i class="fas fa-envelope"></i> Email Setup
         </button>
-        <button class="nav-tab" onclick="showTab('microsoft365')">
+        <button class="nav-tab" onclick="showTabSafe('microsoft365', this)">
             <i class="fab fa-microsoft"></i> Microsoft 365
         </button>
     </nav>
@@ -138,31 +139,45 @@
         <div id="communications" class="tab-content">
             <div class="section-header">
                 <h2><i class="fas fa-comments"></i> Communications</h2>
-                <button class="btn btn-primary" onclick="showAddCommunicationModal()">
-                    <i class="fas fa-plus"></i> Add Communication
-                </button>
+                <div class="section-actions">
+                    <button class="btn btn-secondary" onclick="dashboard.clearCommunicationFilters()" title="Clear all filters">
+                        <i class="fas fa-filter"></i> Clear Filters
+                    </button>
+                    <button class="btn btn-primary" onclick="showAddCommunicationModal()">
+                        <i class="fas fa-plus"></i> Add Communication
+                    </button>
+                </div>
             </div>
             
-            <!-- Filters -->
+            <!-- Enhanced Filters -->
             <div class="filters">
-                <select id="project-filter" onchange="filterCommunications()">
-                    <option value="">All Projects</option>
-                </select>
-                <select id="type-filter" onchange="filterCommunications()">
-                    <option value="">All Types</option>
-                    <option value="RFI">RFI</option>
-                    <option value="Submittal">Submittal</option>
-                    <option value="Change Order">Change Order</option>
-                    <option value="Lien Release">Lien Release</option>
-                    <option value="General">General</option>
-                </select>
-                <select id="status-filter" onchange="filterCommunications()">
-                    <option value="">All Status</option>
-                    <option value="Pending">Pending</option>
-                    <option value="In Progress">In Progress</option>
-                    <option value="Completed">Completed</option>
-                    <option value="Overdue">Overdue</option>
-                </select>
+                <div class="filter-group">
+                    <label class="filter-label">Project</label>
+                    <select id="project-filter" onchange="dashboard.filterCommunications()">
+                        <option value="">All Projects</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Type</label>
+                    <select id="type-filter" onchange="dashboard.filterCommunications()">
+                        <option value="">All Types</option>
+                        <option value="RFI">🔍 RFI</option>
+                        <option value="Submittal">📋 Submittal</option>
+                        <option value="Change Order">📝 Change Order</option>
+                        <option value="Lien Release">✅ Lien Release</option>
+                        <option value="General">💬 General</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Status</label>
+                    <select id="status-filter" onchange="dashboard.filterCommunications()">
+                        <option value="">All Status</option>
+                        <option value="Pending">⏳ Pending</option>
+                        <option value="In Progress">🔄 In Progress</option>
+                        <option value="Completed">✅ Completed</option>
+                        <option value="Overdue">⚠️ Overdue</option>
+                    </select>
+                </div>
             </div>
 
             <div id="communications-list" class="communications-list">
@@ -707,5 +722,26 @@
     <script src="js/app.js"></script>
     <script src="js/excel.js"></script>
     <script src="js/emails.js"></script>
+    <script>
+        // Safe tab switching function
+        function showTabSafe(tabName, clickedElement) {
+            if (window.dashboard && typeof window.dashboard.showTab === 'function') {
+                window.dashboard.showTab(tabName, clickedElement);
+            } else {
+                // Wait for dashboard to be ready
+                setTimeout(() => {
+                    if (window.dashboard && typeof window.dashboard.showTab === 'function') {
+                        window.dashboard.showTab(tabName, clickedElement);
+                    }
+                }, 100);
+            }
+        }
+        
+        // Wait for DOM to be fully loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize the dashboard
+            window.dashboard = new ConstructionDashboard();
+        });
+    </script>
 </body>
 </html>

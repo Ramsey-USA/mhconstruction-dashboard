@@ -2,13 +2,37 @@
   {
     "id": "comm_1",
     "projectId": "proj_1",
-    "stakeholderId": "stake_3",
+    "stakeholderId": "stake_2",
     "type": "RFI",
     "subject": "Electrical layout clarification",
     "notes": "Need clarification on electrical outlet placement in conference rooms",
-    "priority": "Medium",
-    "dueDate": "2025-08-05",
+    "priority": "High",
+    "dueDate": "2025-07-31",
     "status": "Pending",
-    "createdAt": "2025-07-28T01:24:33.287Z"
+    "createdAt": "2025-07-28T02:47:26.094Z"
+  },
+  {
+    "id": "comm_2",
+    "projectId": "proj_2",
+    "stakeholderId": "stake_2",
+    "type": "Submittal",
+    "subject": "Structural Steel Submittal",
+    "notes": "Steel beam specifications and connection details for warehouse framework",
+    "priority": "Medium",
+    "dueDate": "2025-08-02",
+    "status": "In Progress",
+    "createdAt": "2025-07-28T02:47:26.095Z"
+  },
+  {
+    "id": "comm_3",
+    "projectId": "proj_3",
+    "stakeholderId": "stake_3",
+    "type": "Change Order",
+    "subject": "Additional retail fixtures",
+    "notes": "Client requested upgraded lighting fixtures and premium flooring in main retail area",
+    "priority": "Low",
+    "dueDate": "2025-08-04",
+    "status": "Completed",
+    "createdAt": "2025-07-28T02:47:26.095Z"
   }
 ]

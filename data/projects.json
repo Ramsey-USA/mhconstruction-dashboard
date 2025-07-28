@@ -3,13 +3,39 @@
     "id": "proj_1",
     "number": "2025-001",
     "name": "Alpha Office Building",
-    "client": "Alpha Corp",
+    "client": "Alpha Corporation",
     "projectManagerId": "stake_1",
-    "superintendentId": "stake_2",
-    "startDate": "2025-07-01",
-    "endDate": "2025-12-31",
-    "contractValue": 750000,
-    "status": "active",
-    "createdAt": "2025-07-28T01:24:33.287Z"
+    "superintendentId": "stake_3",
+    "startDate": "2025-06-01",
+    "endDate": "2025-12-15",
+    "contractValue": 2500000,
+    "status": "in_progress",
+    "createdAt": "2025-07-28T02:47:26.094Z"
+  },
+  {
+    "id": "proj_2",
+    "number": "2025-002",
+    "name": "Beta Warehouse Complex",
+    "client": "Beta Industries",
+    "projectManagerId": "stake_1",
+    "superintendentId": "stake_3",
+    "startDate": "2025-08-01",
+    "endDate": "2026-03-15",
+    "contractValue": 1800000,
+    "status": "planning",
+    "createdAt": "2025-07-28T02:47:26.094Z"
+  },
+  {
+    "id": "proj_3",
+    "number": "2025-003",
+    "name": "Gamma Retail Center",
+    "client": "Gamma Development",
+    "projectManagerId": "stake_1",
+    "superintendentId": "stake_3",
+    "startDate": "2025-05-01",
+    "endDate": "2025-11-30",
+    "contractValue": 3200000,
+    "status": "completed",
+    "createdAt": "2025-07-28T02:47:26.094Z"
   }
 ]

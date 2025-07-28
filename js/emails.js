@@ -6,7 +6,310 @@ class EmailManager {
         this.settings = dataManager.getSettings();
     }
 
-    // Generate daily emails for all recipients
+    // Create targeted project communication email
+    createProjectEmail(options) {
+        const {
+            emailType = 'daily',
+            dateRange = 'today',
+            selectedProjects = [],
+            selectedStakeholders = [],
+            includeUrgent = true,
+            includeDueSoon = true,
+            includeCompleted = true,
+            includeNew = true,
+            includeProjectHealth = false,
+            additionalMessage = '',
+            customSubject = ''
+        } = options;
+
+        try {
+            const emails = [];
+            
+            // Get communications based on criteria
+            const communications = this.getFilteredCommunications(selectedProjects, dateRange);
+            
+            selectedStakeholders.forEach(stakeholderId => {
+                const stakeholder = dataManager.getStakeholders().find(s => s.id === stakeholderId);
+                if (stakeholder && stakeholder.email) {
+                    const emailContent = this.generateTargetedEmailContent({
+                        stakeholder,
+                        communications,
+                        projects: selectedProjects,
+                        emailType,
+                        dateRange,
+                        includeUrgent,
+                        includeDueSoon,
+                        includeCompleted,
+                        includeNew,
+                        includeProjectHealth,
+                        additionalMessage,
+                        customSubject
+                    });
+                    
+                    emails.push({
+                        to: stakeholder.email,
+                        subject: emailContent.subject,
+                        content: emailContent.body,
+                        stakeholderName: stakeholder.name
+                    });
+                }
+            });
+
+            return emails;
+        } catch (error) {
+            console.error('Email creation error:', error);
+            return [];
+        }
+    }
+
+    // Get filtered communications based on projects and date range
+    getFilteredCommunications(projectIds, dateRange) {
+        let communications = dataManager.getCommunications();
+        
+        // Filter by projects
+        if (projectIds.length > 0) {
+            communications = communications.filter(c => projectIds.includes(c.projectId));
+        }
+
+        // Filter by date range
+        const today = new Date();
+        const startDate = this.getDateRangeStart(dateRange, today);
+        const endDate = this.getDateRangeEnd(dateRange, today);
+
+        if (startDate && endDate) {
+            communications = communications.filter(c => {
+                const commDate = new Date(c.dateCreated || c.dueDate);
+                return commDate >= startDate && commDate <= endDate;
+            });
+        }
+
+        return communications;
+    }
+
+    // Generate targeted email content
+    generateTargetedEmailContent(options) {
+        const {
+            stakeholder,
+            communications,
+            projects,
+            emailType,
+            dateRange,
+            includeUrgent,
+            includeDueSoon,
+            includeCompleted,
+            includeNew,
+            includeProjectHealth,
+            additionalMessage,
+            customSubject
+        } = options;
+
+        const today = new Date();
+        const dateStr = today.toLocaleDateString('en-US', { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+        });
+
+        // Generate subject line
+        let subject = customSubject;
+        if (!subject) {
+            const typeMap = {
+                daily: 'Daily Update',
+                weekly: 'Weekly Report',
+                urgent: 'Urgent Items Alert',
+                project: 'Project Summary'
+            };
+            subject = `${typeMap[emailType] || 'Project Update'} - ${stakeholder.name} - ${today.toLocaleDateString()}`;
+        }
+
+        // Build email content
+        let emailBody = '';
+        emailBody += `Hi ${stakeholder.name},\n\n`;
+        
+        // Add opening based on email type
+        const openingMap = {
+            daily: `Here's your daily project communication update as of ${dateStr}:`,
+            weekly: `Here's your weekly project summary for the week ending ${dateStr}:`,
+            urgent: `URGENT: The following items require immediate attention as of ${dateStr}:`,
+            project: `Here's a comprehensive project status summary as of ${dateStr}:`
+        };
+        
+        emailBody += `${openingMap[emailType] || openingMap.daily}\n\n`;
+
+        // Add additional message if provided
+        if (additionalMessage.trim()) {
+            emailBody += `${additionalMessage.trim()}\n\n`;
+        }
+
+        // Process communications by category
+        const categories = this.categorizeCommunications(communications);
+
+        // Add urgent items
+        if (includeUrgent && categories.urgent.length > 0) {
+            emailBody += `🔴 URGENT - Requires Immediate Attention:\n`;
+            categories.urgent.forEach(item => {
+                const project = dataManager.getProjects().find(p => p.id === item.projectId);
+                const itemStakeholder = dataManager.getStakeholders().find(s => s.id === item.stakeholderId);
+                const daysOverdue = Math.abs(dataManager.getDaysUntilDue(item.dueDate));
+                emailBody += `• ${project?.name || 'Unknown Project'}: ${item.type} "${item.subject}" overdue by ${daysOverdue} days (${itemStakeholder?.name || 'Unknown Stakeholder'})\n`;
+            });
+            emailBody += `\n`;
+        }
+
+        // Add due soon items
+        if (includeDueSoon && categories.dueSoon.length > 0) {
+            emailBody += `🟡 DUE SOON:\n`;
+            categories.dueSoon.forEach(item => {
+                const project = dataManager.getProjects().find(p => p.id === item.projectId);
+                const daysUntil = dataManager.getDaysUntilDue(item.dueDate);
+                const dueText = daysUntil === 0 ? 'today' : 
+                               daysUntil === 1 ? 'tomorrow' : 
+                               `in ${daysUntil} days`;
+                emailBody += `• ${project?.name || 'Unknown Project'}: ${item.type} "${item.subject}" due ${dueText}\n`;
+            });
+            emailBody += `\n`;
+        }
+
+        // Add completed items
+        if (includeCompleted && categories.completed.length > 0) {
+            emailBody += `🟢 RECENTLY COMPLETED:\n`;
+            categories.completed.forEach(item => {
+                const project = dataManager.getProjects().find(p => p.id === item.projectId);
+                emailBody += `• ${project?.name || 'Unknown Project'}: ${item.type} "${item.subject}" completed\n`;
+            });
+            emailBody += `\n`;
+        }
+
+        // Add new items
+        if (includeNew && categories.new.length > 0) {
+            emailBody += `🆕 NEW COMMUNICATIONS:\n`;
+            categories.new.forEach(item => {
+                const project = dataManager.getProjects().find(p => p.id === item.projectId);
+                const itemStakeholder = dataManager.getStakeholders().find(s => s.id === item.stakeholderId);
+                emailBody += `• ${project?.name || 'Unknown Project'}: ${item.type} "${item.subject}" from ${itemStakeholder?.name || 'Unknown Stakeholder'}\n`;
+            });
+            emailBody += `\n`;
+        }
+
+        // Add project health summary
+        if (includeProjectHealth && projects.length > 0) {
+            emailBody += `📊 PROJECT HEALTH SUMMARY:\n`;
+            projects.forEach(projectId => {
+                const project = dataManager.getProjects().find(p => p.id === projectId);
+                if (project) {
+                    const projectComms = communications.filter(c => c.projectId === projectId);
+                    const overdue = projectComms.filter(c => dataManager.isOverdue(c.dueDate)).length;
+                    const completed = projectComms.filter(c => c.status === 'completed').length;
+                    
+                    let status = '🟢 On Track';
+                    if (overdue > 3) status = '🔴 Critical';
+                    else if (overdue > 0) status = '🟡 Attention Needed';
+                    
+                    emailBody += `• ${project.name}: ${status} (${completed} completed, ${overdue} overdue)\n`;
+                }
+            });
+            emailBody += `\n`;
+        }
+
+        // Add closing
+        emailBody += `Questions or need to discuss anything? Just reply to this email.\n\n`;
+        emailBody += `${this.settings.emailSignature || 'Best regards,\\nProject Engineering Department'}\n`;
+
+        return {
+            subject: subject,
+            body: emailBody
+        };
+    }
+
+    // Categorize communications
+    categorizeCommunications(communications) {
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        
+        const categories = {
+            urgent: [],
+            dueSoon: [],
+            completed: [],
+            new: []
+        };
+
+        communications.forEach(comm => {
+            // Urgent/overdue
+            if (dataManager.isOverdue(comm.dueDate)) {
+                categories.urgent.push(comm);
+            }
+            // Due soon (within 7 days)
+            else if (dataManager.getDaysUntilDue(comm.dueDate) <= 7 && dataManager.getDaysUntilDue(comm.dueDate) >= 0) {
+                categories.dueSoon.push(comm);
+            }
+            
+            // Completed recently
+            if (comm.status === 'completed' && comm.dateCompleted) {
+                const completedDate = new Date(comm.dateCompleted);
+                if (completedDate >= yesterday) {
+                    categories.completed.push(comm);
+                }
+            }
+            
+            // New (created recently)
+            if (comm.dateCreated) {
+                const createdDate = new Date(comm.dateCreated);
+                if (createdDate >= yesterday) {
+                    categories.new.push(comm);
+                }
+            }
+        });
+
+        return categories;
+    }
+
+    // Get date range start
+    getDateRangeStart(range, referenceDate) {
+        const date = new Date(referenceDate);
+        
+        switch (range) {
+            case 'today':
+                return new Date(date.setHours(0, 0, 0, 0));
+            case 'yesterday':
+                date.setDate(date.getDate() - 1);
+                return new Date(date.setHours(0, 0, 0, 0));
+            case 'this-week':
+                const dayOfWeek = date.getDay();
+                date.setDate(date.getDate() - dayOfWeek);
+                return new Date(date.setHours(0, 0, 0, 0));
+            case 'last-week':
+                const lastWeekStart = new Date(date);
+                lastWeekStart.setDate(date.getDate() - date.getDay() - 7);
+                return new Date(lastWeekStart.setHours(0, 0, 0, 0));
+            default:
+                return null;
+        }
+    }
+
+    // Get date range end
+    getDateRangeEnd(range, referenceDate) {
+        const date = new Date(referenceDate);
+        
+        switch (range) {
+            case 'today':
+            case 'yesterday':
+                return new Date(this.getDateRangeStart(range, referenceDate).getTime() + 24 * 60 * 60 * 1000 - 1);
+            case 'this-week':
+                const endOfWeek = new Date(this.getDateRangeStart(range, referenceDate));
+                endOfWeek.setDate(endOfWeek.getDate() + 6);
+                return new Date(endOfWeek.setHours(23, 59, 59, 999));
+            case 'last-week':
+                const lastWeekEnd = new Date(this.getDateRangeStart(range, referenceDate));
+                lastWeekEnd.setDate(lastWeekEnd.getDate() + 6);
+                return new Date(lastWeekEnd.setHours(23, 59, 59, 999));
+            default:
+                return null;
+        }
+    }
+
+    // Generate daily emails for all recipients (existing functionality)
     generateDailyEmails() {
         try {
             const recipients = dataManager.getEmailRecipients();
@@ -36,7 +339,7 @@ class EmailManager {
         }
     }
 
-    // Generate email content for specific recipient
+    // Generate email content for specific recipient (existing functionality)
     generateEmailContent(recipientId) {
         const recipient = dataManager.getEmailRecipients().find(r => r.id === recipientId);
         const stakeholder = dataManager.getStakeholders().find(s => s.id === recipient.stakeholderId);
@@ -230,7 +533,7 @@ class EmailManager {
     }
 
     // Open Outlook with pre-filled email
-    async openOutlookEmail(toEmail, content, recipientName) {
+    async openOutlookEmail(toEmail, content, recipientName, customSubject = null) {
         try {
             // Try Microsoft 365 integration first
             const microsoft365Response = await fetch('/api/microsoft365/status');
@@ -239,9 +542,16 @@ class EmailManager {
                 
                 if (microsoft365Status.outlookEnabled && microsoft365Status.isAuthenticated) {
                     // Send via Microsoft Graph API
-                    const subjectMatch = content.match(/Subject: (.+)/);
-                    const subject = subjectMatch ? subjectMatch[1] : `Daily Project Status - ${recipientName}`;
-                    const body = content.replace(/Subject: .+\n\n/, '');
+                    let subject, body;
+                    
+                    if (customSubject) {
+                        subject = customSubject;
+                        body = content;
+                    } else {
+                        const subjectMatch = content.match(/Subject: (.+)/);
+                        subject = subjectMatch ? subjectMatch[1] : `Daily Project Status - ${recipientName}`;
+                        body = content.replace(/Subject: .+\n\n/, '');
+                    }
                     
                     const emailData = {
                         subject: subject,

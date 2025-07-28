@@ -3,12 +3,14 @@
 
 class ServerDataManager {
     constructor() {
+        console.log('🌐 ServerDataManager constructor called');
         this.apiBase = '/api';
         this.cache = {}; // Client-side cache for better performance
         this.init();
     }
 
     async init() {
+        console.log('🔌 ServerDataManager initializing...');
         try {
             // Test server connection
             const response = await fetch(`${this.apiBase}/health`);
@@ -38,12 +40,16 @@ class ServerDataManager {
     }
 
     async refreshCache() {
+        console.log('🔄 Refreshing cache...');
         try {
             const types = ['projects', 'communications', 'prospects', 'stakeholders', 'emailRecipients'];
             for (const type of types) {
+                console.log(`📥 Fetching ${type}...`);
                 this.cache[type] = await this.fetchData(type);
+                console.log(`✅ Loaded ${this.cache[type]?.length || 0} ${type}`);
             }
             this.cache.settings = await this.fetchSettings();
+            console.log('🎉 Cache refresh complete!', Object.keys(this.cache));
         } catch (error) {
             console.error('Error refreshing cache:', error);
         }

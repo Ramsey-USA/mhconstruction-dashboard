@@ -3,15 +3,19 @@
 
 class ConstructionDashboard {
     constructor() {
+        console.log('🏗️ ConstructionDashboard constructor called');
+        console.log('🔍 Window dashboard being set to:', this);
         this.currentTab = 'dashboard';
         this.init();
     }
 
     init() {
+        console.log('🔧 ConstructionDashboard init called');
         this.bindEvents();
         this.loadDashboard();
         this.populateDropdowns();
         this.setupAutoRefresh();
+        console.log('✅ ConstructionDashboard init completed');
     }
 
     // Event Binding
@@ -132,6 +136,7 @@ class ConstructionDashboard {
 
     // Dashboard Loading
     async loadDashboard() {
+        console.log('📊 Loading dashboard...');
         await this.loadDashboardStats();
         this.loadCriticalAlerts();
         this.loadUpcomingDeadlines();
@@ -139,6 +144,7 @@ class ConstructionDashboard {
     }
 
     async loadDashboardStats() {
+        console.log('📈 Loading dashboard stats...');
         try {
             const stats = await dataManager.getDashboardStats();
             
@@ -339,6 +345,15 @@ class ConstructionDashboard {
         
         this.displayCommunications(communications);
         this.updateCommunicationsCounter(communications.length, dataManager.getCommunications().length);
+    }
+
+    filterProjectCommunications(projectId) {
+        // Set the project filter and trigger filtering
+        const projectFilter = document.getElementById('project-filter');
+        if (projectFilter) {
+            projectFilter.value = projectId;
+            this.filterCommunications();
+        }
     }
 
     updateCommunicationsCounter(filtered, total) {
@@ -630,6 +645,7 @@ class ConstructionDashboard {
         e.preventDefault();
         
         try {
+            const editId = e.target.dataset.editId;
             const project = {
                 number: document.getElementById('project-number').value,
                 name: document.getElementById('project-name').value,
@@ -639,12 +655,22 @@ class ConstructionDashboard {
                 startDate: document.getElementById('project-start-date').value,
                 endDate: document.getElementById('project-end-date').value,
                 contractValue: parseFloat(document.getElementById('project-value').value) || 0,
-                status: 'active'
+                status: document.getElementById('project-status').value || 'active'
             };
             
-            await dataManager.addProject(project);
+            if (editId) {
+                // Update existing project
+                await dataManager.updateProject(editId, project);
+                this.showNotification('Project updated successfully!', 'success');
+                delete e.target.dataset.editId;
+                document.querySelector('#add-project-modal h3').textContent = 'Add New Project';
+            } else {
+                // Add new project
+                await dataManager.addProject(project);
+                this.showNotification('Project added successfully!', 'success');
+            }
+            
             this.closeModal('add-project-modal');
-            this.showNotification('Project added successfully!', 'success');
             this.loadProjects();
             this.populateDropdowns();
             e.target.reset();
@@ -658,6 +684,7 @@ class ConstructionDashboard {
         e.preventDefault();
         
         try {
+            const editId = e.target.dataset.editId;
             const communication = {
                 projectId: document.getElementById('comm-project').value,
                 stakeholderId: document.getElementById('comm-stakeholder').value,
@@ -669,9 +696,19 @@ class ConstructionDashboard {
                 status: document.getElementById('comm-status').value
             };
             
-            await dataManager.addCommunication(communication);
+            if (editId) {
+                // Update existing communication
+                await dataManager.updateCommunication(editId, communication);
+                this.showNotification('Communication updated successfully!', 'success');
+                delete e.target.dataset.editId;
+                document.querySelector('#add-communication-modal h3').textContent = 'Add New Communication';
+            } else {
+                // Add new communication
+                await dataManager.addCommunication(communication);
+                this.showNotification('Communication added successfully!', 'success');
+            }
+            
             this.closeModal('add-communication-modal');
-            this.showNotification('Communication added successfully!', 'success');
             this.loadCommunications();
             e.target.reset();
         } catch (error) {
@@ -684,84 +721,36 @@ class ConstructionDashboard {
         e.preventDefault();
         
         try {
-            const modal = document.getElementById('add-prospect-modal');
-            const isEditing = modal.dataset.editingProspectId;
-            
+            const editId = e.target.dataset.editId;
             const prospectData = {
                 name: document.getElementById('prospect-name').value,
                 client: document.getElementById('prospect-client').value,
                 estimatorId: document.getElementById('prospect-estimator').value,
                 walkDate: document.getElementById('prospect-walk-date').value,
-                proposalDueDate: document.getElementById('prospect-due-date').value,
+                proposalDueDate: document.getElementById('prospect-proposal-date').value,
                 estimatedValue: parseFloat(document.getElementById('prospect-value').value) || 0,
                 probability: parseInt(document.getElementById('prospect-probability').value),
                 notes: document.getElementById('prospect-notes').value,
                 status: 'active'
             };
             
-            let prospect;
-            let calendarSynced = false;
-            
-            if (isEditing) {
+            if (editId) {
                 // Update existing prospect
-                prospect = await dataManager.updateProspect(isEditing, prospectData);
+                await dataManager.updateProspect(editId, prospectData);
                 this.showNotification('Prospect updated successfully!', 'success');
-                
-                // Sync calendar events for updated dates
-                if (prospectData.walkDate) {
-                    try {
-                        await syncProspectToCalendar(isEditing, 'walk');
-                        calendarSynced = true;
-                    } catch (error) {
-                        console.error('Error syncing walk date to calendar:', error);
-                    }
-                }
-                if (prospectData.proposalDueDate) {
-                    try {
-                        await syncProspectToCalendar(isEditing, 'proposal');
-                        calendarSynced = true;
-                    } catch (error) {
-                        console.error('Error syncing proposal due date to calendar:', error);
-                    }
-                }
-                
-                // Clean up edit mode
-                delete modal.dataset.editingProspectId;
-                modal.querySelector('.modal-header h3').textContent = 'Add Prospect';
-                modal.querySelector('button[type="submit"]').textContent = 'Add Prospect';
-                
+                delete e.target.dataset.editId;
+                document.querySelector('#add-prospect-modal h3').textContent = 'Add New Prospect';
             } else {
                 // Add new prospect
-                prospect = await dataManager.addProspect(prospectData);
-                
-                // Auto-sync new prospect dates to calendar
-                if (prospect.walkDate) {
-                    try {
-                        await syncProspectToCalendar(prospect.id, 'walk');
-                        calendarSynced = true;
-                    } catch (error) {
-                        console.error('Error syncing walk date to calendar:', error);
-                    }
-                }
-                if (prospect.proposalDueDate) {
-                    try {
-                        await syncProspectToCalendar(prospect.id, 'proposal');
-                        calendarSynced = true;
-                    } catch (error) {
-                        console.error('Error syncing proposal due date to calendar:', error);
-                    }
-                }
-                
-                this.showNotification('Prospect added successfully!' + 
-                    (calendarSynced ? ' Calendar events have been synced to Outlook.' : ''), 'success');
+                await dataManager.addProspect(prospectData);
+                this.showNotification('Prospect added successfully!', 'success');
             }
             
             this.closeModal('add-prospect-modal');
             this.loadProspects();
             e.target.reset();
-            
         } catch (error) {
-            console.error('Error saving prospect:', error);
+            console.error('Error adding/updating prospect:', error);
             this.showNotification('Failed to save prospect. Please try again.', 'error');
         }
     }
@@ -770,6 +759,7 @@ class ConstructionDashboard {
         e.preventDefault();
         
         try {
+            const editId = e.target.dataset.editId;
             const stakeholder = {
                 name: document.getElementById('stakeholder-name').value,
                 role: document.getElementById('stakeholder-role').value,
@@ -779,9 +769,19 @@ class ConstructionDashboard {
                 receivesEmails: document.getElementById('stakeholder-receives-emails').checked
             };
             
-            await dataManager.addStakeholder(stakeholder);
+            if (editId) {
+                // Update existing stakeholder
+                await dataManager.updateStakeholder(editId, stakeholder);
+                this.showNotification('Stakeholder updated successfully!', 'success');
+                delete e.target.dataset.editId;
+                document.querySelector('#add-stakeholder-modal h3').textContent = 'Add New Stakeholder';
+            } else {
+                // Add new stakeholder
+                await dataManager.addStakeholder(stakeholder);
+                this.showNotification('Stakeholder added successfully!', 'success');
+            }
+            
             this.closeModal('add-stakeholder-modal');
-            this.showNotification('Stakeholder added successfully!', 'success');
             this.loadStakeholders();
             this.populateDropdowns();
             e.target.reset();
@@ -795,6 +795,7 @@ class ConstructionDashboard {
         e.preventDefault();
         
         try {
+            const editId = e.target.dataset.editId;
             const selectedProjects = Array.from(document.getElementById('recipient-projects').selectedOptions)
                 .map(option => option.value);
             
@@ -803,21 +804,29 @@ class ConstructionDashboard {
             const recipient = {
                 stakeholderId: stakeholderId,
                 projectIds: selectedProjects,
-                sendTime: document.getElementById('recipient-time').value,
+                sendTime: document.getElementById('recipient-send-time').value,
                 frequency: document.getElementById('recipient-frequency').value
             };
             
-            // Add the email recipient
-            await dataManager.addEmailRecipient(recipient);
-            
-            // Update the stakeholder to indicate they now receive emails
-            const stakeholder = dataManager.getStakeholders().find(s => s.id === stakeholderId);
-            if (stakeholder && !stakeholder.receivesEmails) {
-                await dataManager.updateStakeholder(stakeholderId, { receivesEmails: true });
+            if (editId) {
+                // Update existing recipient
+                await dataManager.updateEmailRecipient(editId, recipient);
+                this.showNotification('Email recipient updated successfully!', 'success');
+                delete e.target.dataset.editId;
+                document.querySelector('#add-recipient-modal h3').textContent = 'Add New Email Recipient';
+            } else {
+                // Add new recipient
+                await dataManager.addEmailRecipient(recipient);
+                this.showNotification('Email recipient added successfully!', 'success');
+                
+                // Update the stakeholder to indicate they now receive emails
+                const stakeholder = dataManager.getStakeholders().find(s => s.id === stakeholderId);
+                if (stakeholder && !stakeholder.receivesEmails) {
+                    await dataManager.updateStakeholder(stakeholderId, { receivesEmails: true });
+                }
             }
             
             this.closeModal('add-recipient-modal');
-            this.showNotification('Email recipient added successfully!', 'success');
             this.loadEmailRecipients();
             this.loadStakeholders(); // Refresh stakeholders list to show updated status
             e.target.reset();
@@ -922,6 +931,335 @@ class ConstructionDashboard {
         this.showNotification('Communication marked as completed!', 'success');
         this.loadCommunications();
         this.loadDashboard();
+    }
+
+    // Project CRUD operations
+    editProject(projectId) {
+        const project = dataManager.getProjects().find(p => p.id === projectId);
+        if (project) {
+            // Populate the form with existing data
+            document.getElementById('project-number').value = project.number;
+            document.getElementById('project-name').value = project.name;
+            document.getElementById('project-client').value = project.client;
+            document.getElementById('project-manager').value = project.projectManagerId || '';
+            document.getElementById('project-superintendent').value = project.superintendentId || '';
+            document.getElementById('project-start-date').value = project.startDate;
+            document.getElementById('project-end-date').value = project.endDate;
+            document.getElementById('project-value').value = project.contractValue;
+            document.getElementById('project-status').value = project.status;
+            
+            // Store the ID for updating
+            document.getElementById('add-project-form').dataset.editId = projectId;
+            document.querySelector('#add-project-modal h3').textContent = 'Edit Project';
+            
+            this.showAddProjectModal();
+        }
+    }
+
+    viewProjectDetails(projectId) {
+        const project = dataManager.getProjects().find(p => p.id === projectId);
+        if (!project) {
+            this.showNotification('Project not found', 'error');
+            return;
+        }
+
+        const stakeholders = dataManager.getStakeholders();
+        const communications = dataManager.getCommunications().filter(c => c.projectId === projectId);
+        const pm = stakeholders.find(s => s.id === project.projectManagerId);
+        const super_ = stakeholders.find(s => s.id === project.superintendentId);
+        
+        // Calculate project statistics
+        const overdueComms = communications.filter(c => dataManager.isOverdue(c.dueDate));
+        const pendingComms = communications.filter(c => c.status === 'Pending' || c.status === 'In Progress');
+        const completedComms = communications.filter(c => c.status === 'Completed');
+        
+        // Group communications by type
+        const commsByType = {
+            'RFI': communications.filter(c => c.type === 'RFI'),
+            'Submittal': communications.filter(c => c.type === 'Submittal'),
+            'Change Order': communications.filter(c => c.type === 'Change Order'),
+            'Lien Release': communications.filter(c => c.type === 'Lien Release'),
+            'General': communications.filter(c => c.type === 'General')
+        };
+
+        // Create detailed view content
+        const detailsHTML = `
+            <div class="project-details-modal">
+                <div class="project-details-header">
+                    <div class="project-title">
+                        <h2>${project.name}</h2>
+                        <p>Project #${project.number} • ${project.client}</p>
+                        <span class="project-status status-${project.status}">${project.status}</span>
+                    </div>
+                </div>
+                
+                <div class="project-details-grid">
+                    <div class="project-info-section">
+                        <h3><i class="fas fa-info-circle"></i> Project Information</h3>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <label>Project Manager:</label>
+                                <span>${pm?.name || 'Unassigned'}</span>
+                            </div>
+                            <div class="info-item">
+                                <label>Superintendent:</label>
+                                <span>${super_?.name || 'Unassigned'}</span>
+                            </div>
+                            <div class="info-item">
+                                <label>Start Date:</label>
+                                <span>${dataManager.formatDate(project.startDate)}</span>
+                            </div>
+                            <div class="info-item">
+                                <label>End Date:</label>
+                                <span>${dataManager.formatDate(project.endDate)}</span>
+                            </div>
+                            <div class="info-item">
+                                <label>Contract Value:</label>
+                                <span>$${(project.contractValue || 0).toLocaleString()}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="project-stats-section">
+                        <h3><i class="fas fa-chart-bar"></i> Communication Statistics</h3>
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <div class="stat-number">${communications.length}</div>
+                                <div class="stat-label">Total Communications</div>
+                            </div>
+                            <div class="stat-item overdue">
+                                <div class="stat-number">${overdueComms.length}</div>
+                                <div class="stat-label">Overdue Items</div>
+                            </div>
+                            <div class="stat-item pending">
+                                <div class="stat-number">${pendingComms.length}</div>
+                                <div class="stat-label">Pending Items</div>
+                            </div>
+                            <div class="stat-item completed">
+                                <div class="stat-number">${completedComms.length}</div>
+                                <div class="stat-label">Completed Items</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="project-communications-section">
+                        <h3><i class="fas fa-comments"></i> Communications by Type</h3>
+                        <div class="comm-types-grid">
+                            ${Object.entries(commsByType).map(([type, comms]) => `
+                                <div class="comm-type-summary">
+                                    <div class="comm-type-header">
+                                        <span class="comm-type-name">${type}</span>
+                                        <span class="comm-type-count">${comms.length}</span>
+                                    </div>
+                                    ${comms.length > 0 ? `
+                                        <div class="comm-type-breakdown">
+                                            <small>
+                                                ${comms.filter(c => c.status === 'Completed').length} completed, 
+                                                ${comms.filter(c => c.status === 'Pending' || c.status === 'In Progress').length} pending,
+                                                ${comms.filter(c => dataManager.isOverdue(c.dueDate)).length} overdue
+                                            </small>
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    
+                    ${overdueComms.length > 0 ? `
+                        <div class="project-alerts-section">
+                            <h3><i class="fas fa-exclamation-triangle"></i> Overdue Items</h3>
+                            <div class="overdue-items-list">
+                                ${overdueComms.slice(0, 5).map(comm => {
+                                    const stakeholder = stakeholders.find(s => s.id === comm.stakeholderId);
+                                    return `
+                                        <div class="overdue-item">
+                                            <div class="overdue-content">
+                                                <strong>${comm.type}: ${comm.subject}</strong>
+                                                <p>Assigned to: ${stakeholder?.name || 'Unknown'}</p>
+                                                <p>Due: ${dataManager.formatDate(comm.dueDate)} (${Math.abs(dataManager.getDaysUntilDue(comm.dueDate))} days overdue)</p>
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('')}
+                                ${overdueComms.length > 5 ? `<p><small>... and ${overdueComms.length - 5} more overdue items</small></p>` : ''}
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+                
+                <div class="project-details-actions">
+                    <button class="btn btn-secondary" onclick="dashboard.editProject('${projectId}')">
+                        <i class="fas fa-edit"></i> Edit Project
+                    </button>
+                    <button class="btn btn-primary" onclick="dashboard.showTab('communications', null); dashboard.filterProjectCommunications('${projectId}')">
+                        <i class="fas fa-comments"></i> View All Communications
+                    </button>
+                    <button class="btn btn-info" onclick="dashboard.exportProjectReport('${projectId}')">
+                        <i class="fas fa-file-excel"></i> Export Report
+                    </button>
+                </div>
+            </div>
+        `;
+
+        // Create and show the modal
+        let modal = document.getElementById('project-details-modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'project-details-modal';
+            modal.className = 'modal';
+            modal.innerHTML = `
+                <div class="modal-content large-modal">
+                    <div class="modal-header">
+                        <h3>Project Details</h3>
+                        <span class="close" onclick="dashboard.closeModal('project-details-modal')">&times;</span>
+                    </div>
+                    <div class="modal-body" id="project-details-body">
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        document.getElementById('project-details-body').innerHTML = detailsHTML;
+        modal.style.display = 'block';
+    }
+
+    deleteProject(projectId) {
+        if (confirm('Are you sure you want to delete this project? This action cannot be undone.')) {
+            dataManager.deleteProject(projectId);
+            this.showNotification('Project deleted successfully!', 'success');
+            this.loadProjects();
+            this.loadDashboard();
+        }
+    }
+
+    // Communication CRUD operations
+    editCommunication(communicationId) {
+        const communication = dataManager.getCommunications().find(c => c.id === communicationId);
+        if (communication) {
+            document.getElementById('comm-project').value = communication.projectId;
+            document.getElementById('comm-stakeholder').value = communication.stakeholderId;
+            document.getElementById('comm-type').value = communication.type;
+            document.getElementById('comm-subject').value = communication.subject;
+            document.getElementById('comm-notes').value = communication.notes || '';
+            document.getElementById('comm-priority').value = communication.priority;
+            document.getElementById('comm-status').value = communication.status;
+            document.getElementById('comm-due-date').value = communication.dueDate;
+            
+            document.getElementById('add-communication-form').dataset.editId = communicationId;
+            document.querySelector('#add-communication-modal h3').textContent = 'Edit Communication';
+            
+            this.showAddCommunicationModal();
+        }
+    }
+
+    deleteCommunication(communicationId) {
+        if (confirm('Are you sure you want to delete this communication?')) {
+            dataManager.deleteCommunication(communicationId);
+            this.showNotification('Communication deleted successfully!', 'success');
+            this.loadCommunications();
+            this.loadDashboard();
+        }
+    }
+
+    duplicateCommunication(communicationId) {
+        const communication = dataManager.getCommunications().find(c => c.id === communicationId);
+        if (communication) {
+            const duplicate = {
+                ...communication,
+                id: 'comm_' + Date.now(),
+                subject: communication.subject + ' (Copy)',
+                createdAt: new Date().toISOString(),
+                status: 'pending'
+            };
+            dataManager.addCommunication(duplicate);
+            this.showNotification('Communication duplicated successfully!', 'success');
+            this.loadCommunications();
+        }
+    }
+
+    // Prospect CRUD operations
+    editProspect(prospectId) {
+        const prospect = dataManager.getProspects().find(p => p.id === prospectId);
+        if (prospect) {
+            document.getElementById('prospect-name').value = prospect.name;
+            document.getElementById('prospect-client').value = prospect.client;
+            document.getElementById('prospect-estimator').value = prospect.estimatorId || '';
+            document.getElementById('prospect-walk-date').value = prospect.walkDate;
+            document.getElementById('prospect-proposal-date').value = prospect.proposalDueDate;
+            document.getElementById('prospect-value').value = prospect.estimatedValue;
+            document.getElementById('prospect-probability').value = prospect.probability;
+            document.getElementById('prospect-notes').value = prospect.notes || '';
+            
+            document.getElementById('add-prospect-form').dataset.editId = prospectId;
+            document.querySelector('#add-prospect-modal h3').textContent = 'Edit Prospect';
+            
+            this.showAddProspectModal();
+        }
+    }
+
+    deleteProspect(prospectId) {
+        if (confirm('Are you sure you want to delete this prospect?')) {
+            dataManager.deleteProspect(prospectId);
+            this.showNotification('Prospect deleted successfully!', 'success');
+            this.loadProspects();
+        }
+    }
+
+    // Stakeholder CRUD operations
+    editStakeholder(stakeholderId) {
+        const stakeholder = dataManager.getStakeholders().find(s => s.id === stakeholderId);
+        if (stakeholder) {
+            document.getElementById('stakeholder-name').value = stakeholder.name;
+            document.getElementById('stakeholder-role').value = stakeholder.role;
+            document.getElementById('stakeholder-company').value = stakeholder.company;
+            document.getElementById('stakeholder-email').value = stakeholder.email;
+            document.getElementById('stakeholder-phone').value = stakeholder.phone;
+            document.getElementById('stakeholder-receives-emails').checked = stakeholder.receivesEmails;
+            
+            document.getElementById('add-stakeholder-form').dataset.editId = stakeholderId;
+            document.querySelector('#add-stakeholder-modal h3').textContent = 'Edit Stakeholder';
+            
+            this.showAddStakeholderModal();
+        }
+    }
+
+    deleteStakeholder(stakeholderId) {
+        if (confirm('Are you sure you want to delete this stakeholder?')) {
+            dataManager.deleteStakeholder(stakeholderId);
+            this.showNotification('Stakeholder deleted successfully!', 'success');
+            this.loadStakeholders();
+            this.populateDropdowns();
+        }
+    }
+
+    // Email recipient CRUD operations
+    editEmailRecipient(recipientId) {
+        const recipient = dataManager.getEmailRecipients().find(r => r.id === recipientId);
+        if (recipient) {
+            document.getElementById('recipient-stakeholder').value = recipient.stakeholderId;
+            document.getElementById('recipient-send-time').value = recipient.sendTime;
+            document.getElementById('recipient-frequency').value = recipient.frequency;
+            
+            // Handle project IDs (assuming checkboxes or multi-select)
+            const projectCheckboxes = document.querySelectorAll('input[name="recipient-projects"]');
+            projectCheckboxes.forEach(checkbox => {
+                checkbox.checked = recipient.projectIds.includes(checkbox.value);
+            });
+            
+            document.getElementById('add-recipient-form').dataset.editId = recipientId;
+            document.querySelector('#add-recipient-modal h3').textContent = 'Edit Email Recipient';
+            
+            this.showAddRecipientModal();
+        }
+    }
+
+    deleteEmailRecipient(recipientId) {
+        if (confirm('Are you sure you want to delete this email recipient?')) {
+            dataManager.deleteEmailRecipient(recipientId);
+            this.showNotification('Email recipient deleted successfully!', 'success');
+            this.loadEmailRecipients();
+        }
     }
 
     duplicateCommunication(communicationId) {
@@ -1058,6 +1396,37 @@ class ConstructionDashboard {
         
         dataManager.saveSettings(settings);
         this.showNotification('Settings saved!', 'success');
+    }
+
+    // Project report export
+    exportProjectReport(projectId) {
+        const project = dataManager.getProjects().find(p => p.id === projectId);
+        if (!project) {
+            this.showNotification('Project not found', 'error');
+            return;
+        }
+
+        // Use the existing excel export functionality but filter for specific project
+        if (typeof exportToExcel === 'function') {
+            // Temporarily filter data to only this project
+            const originalGetProjects = dataManager.getProjects;
+            const originalGetCommunications = dataManager.getCommunications;
+            
+            // Override methods to return only this project's data
+            dataManager.getProjects = () => [project];
+            dataManager.getCommunications = () => originalGetCommunications.call(dataManager).filter(c => c.projectId === projectId);
+            
+            // Export the filtered data
+            exportToExcel();
+            
+            // Restore original methods
+            dataManager.getProjects = originalGetProjects;
+            dataManager.getCommunications = originalGetCommunications;
+            
+            this.showNotification('Project report exported successfully!', 'success');
+        } else {
+            this.showNotification('Export functionality not available', 'error');
+        }
     }
 
     // Notifications
@@ -1218,6 +1587,76 @@ window.backupToOneDrive = async () => {
     } finally {
         button.textContent = originalText;
         button.disabled = false;
+    }
+};
+
+window.listOneDriveBackups = async () => {
+    const button = document.querySelector('button[onclick="listOneDriveBackups()"]');
+    const originalText = button.textContent;
+    
+    try {
+        button.textContent = 'Loading...';
+        button.disabled = true;
+        
+        const response = await fetch('/api/microsoft365/backups');
+        const data = await response.json();
+        
+        if (data.success && data.backups && data.backups.length > 0) {
+            let backupList = 'Available backups:\n\n';
+            data.backups.forEach((backup, index) => {
+                backupList += `${index + 1}. ${backup.name} (${backup.lastModified})\n`;
+            });
+            alert(backupList);
+        } else {
+            alert('No backups found in OneDrive');
+        }
+    } catch (error) {
+        console.error('Error listing backups:', error);
+        alert('Failed to list backups: ' + error.message);
+    } finally {
+        button.textContent = originalText;
+        button.disabled = false;
+    }
+};
+
+window.testOutlookIntegration = async () => {
+    const button = document.querySelector('button[onclick="testOutlookIntegration()"]');
+    const originalText = button.textContent;
+    
+    try {
+        button.textContent = 'Testing...';
+        button.disabled = true;
+        
+        const response = await fetch('/api/microsoft365/test-outlook', { method: 'POST' });
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('Outlook integration successful! Test calendar event created.');
+        } else {
+            alert('Outlook test failed: ' + (data.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error testing Outlook:', error);
+        alert('Outlook test failed: ' + error.message);
+    } finally {
+        button.textContent = originalText;
+        button.disabled = false;
+    }
+};
+
+window.openAdminConsentUrl = async () => {
+    try {
+        const response = await fetch('/api/microsoft365/admin-consent-url');
+        const data = await response.json();
+        
+        if (data.success && data.url) {
+            window.open(data.url, '_blank');
+        } else {
+            alert('Failed to get admin consent URL: ' + (data.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error getting admin consent URL:', error);
+        alert('Failed to open admin consent: ' + error.message);
     }
 };
 
@@ -1400,5 +1839,205 @@ function updateFooterStatus() {
                 footerBackupStatus.title = 'Cloud Backup Error';
             }
         });
+    }
 }
 
+// Global Functions for Email Management
+function showCreateEmailModal() {
+    const modal = document.getElementById('create-email-modal');
+    if (modal) {
+        modal.style.display = 'block';
+        populateEmailModal();
+    }
+}
+
+function populateEmailModal() {
+    // Populate projects
+    const projects = dataManager.getProjects();
+    const projectContainer = document.getElementById('project-selection');
+    if (projectContainer) {
+        projectContainer.innerHTML = projects.map(project => `
+            <label>
+                <input type="checkbox" value="${project.id}" name="project"> 
+                ${project.name} (${project.number})
+            </label>
+        `).join('');
+    }
+
+    // Populate stakeholders
+    const stakeholders = dataManager.getStakeholders();
+    const stakeholderContainer = document.getElementById('stakeholder-selection');
+    if (stakeholderContainer) {
+        stakeholderContainer.innerHTML = stakeholders.map(stakeholder => `
+            <label>
+                <input type="checkbox" value="${stakeholder.id}" name="stakeholder"> 
+                ${stakeholder.name} (${stakeholder.email || 'No email'})
+            </label>
+        `).join('');
+    }
+
+    // Set default dates
+    const today = new Date();
+    document.getElementById('date-from').value = today.toISOString().split('T')[0];
+    document.getElementById('date-to').value = today.toISOString().split('T')[0];
+
+    // Handle date range changes
+    document.getElementById('date-range').addEventListener('change', function() {
+        const customRange = document.getElementById('custom-date-range');
+        if (this.value === 'custom') {
+            customRange.style.display = 'block';
+        } else {
+            customRange.style.display = 'none';
+        }
+    });
+}
+
+function updateEmailType() {
+    const emailType = document.getElementById('email-type').value;
+    const subjectField = document.getElementById('email-subject');
+    
+    // Update placeholder subject based on type
+    const subjectMap = {
+        daily: 'Daily Project Update - [Date]',
+        weekly: 'Weekly Project Report - Week of [Date]',
+        urgent: 'URGENT: Items Requiring Immediate Attention',
+        project: 'Project Status Summary - [Date]',
+        custom: 'Custom Email Subject'
+    };
+    
+    subjectField.placeholder = subjectMap[emailType] || 'Email Subject';
+    
+    // Update content checkboxes based on type
+    if (emailType === 'urgent') {
+        document.getElementById('include-urgent').checked = true;
+        document.getElementById('include-due-soon').checked = false;
+        document.getElementById('include-completed').checked = false;
+        document.getElementById('include-new').checked = false;
+    } else if (emailType === 'project') {
+        document.getElementById('include-project-health').checked = true;
+    }
+    
+    // Update preview
+    previewEmail();
+}
+
+function previewEmail() {
+    try {
+        // Get selected options
+        const selectedProjects = Array.from(document.querySelectorAll('input[name="project"]:checked')).map(cb => cb.value);
+        const selectedStakeholders = Array.from(document.querySelectorAll('input[name="stakeholder"]:checked')).map(cb => cb.value);
+        
+        if (selectedProjects.length === 0 || selectedStakeholders.length === 0) {
+            document.getElementById('email-composition-preview').innerHTML = 
+                '<p style="color: var(--text-muted);">Please select at least one project and one stakeholder to preview the email.</p>';
+            return;
+        }
+
+        const options = {
+            emailType: document.getElementById('email-type').value,
+            dateRange: document.getElementById('date-range').value,
+            selectedProjects: selectedProjects,
+            selectedStakeholders: selectedStakeholders.slice(0, 1), // Preview for first stakeholder only
+            includeUrgent: document.getElementById('include-urgent').checked,
+            includeDueSoon: document.getElementById('include-due-soon').checked,
+            includeCompleted: document.getElementById('include-completed').checked,
+            includeNew: document.getElementById('include-new').checked,
+            includeProjectHealth: document.getElementById('include-project-health').checked,
+            additionalMessage: document.getElementById('additional-message').value,
+            customSubject: document.getElementById('email-subject').value
+        };
+
+        const emails = emailManager.createProjectEmail(options);
+        
+        if (emails.length > 0) {
+            const previewContent = `Subject: ${emails[0].subject}\n\n${emails[0].content}`;
+            document.getElementById('email-composition-preview').innerHTML = `<pre>${previewContent}</pre>`;
+        } else {
+            document.getElementById('email-composition-preview').innerHTML = 
+                '<p style="color: var(--danger-color);">Error generating email preview. Please check your selections.</p>';
+        }
+    } catch (error) {
+        console.error('Preview error:', error);
+        document.getElementById('email-composition-preview').innerHTML = 
+            '<p style="color: var(--danger-color);">Error generating email preview.</p>';
+    }
+}
+
+function createDailyUpdate() {
+    showCreateEmailModal();
+    document.getElementById('email-type').value = 'daily';
+    document.getElementById('date-range').value = 'today';
+    updateEmailType();
+}
+
+function createWeeklyReport() {
+    showCreateEmailModal();
+    document.getElementById('email-type').value = 'weekly';
+    document.getElementById('date-range').value = 'this-week';
+    updateEmailType();
+}
+
+function createUrgentAlert() {
+    showCreateEmailModal();
+    document.getElementById('email-type').value = 'urgent';
+    document.getElementById('date-range').value = 'today';
+    updateEmailType();
+}
+
+function createProjectSummary() {
+    showCreateEmailModal();
+    document.getElementById('email-type').value = 'project';
+    document.getElementById('date-range').value = 'this-week';
+    updateEmailType();
+}
+
+// Enhanced email form handler
+document.getElementById('create-email-form')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    try {
+        const selectedProjects = Array.from(document.querySelectorAll('input[name="project"]:checked')).map(cb => cb.value);
+        const selectedStakeholders = Array.from(document.querySelectorAll('input[name="stakeholder"]:checked')).map(cb => cb.value);
+        
+        if (selectedProjects.length === 0) {
+            dashboard.showNotification('Please select at least one project.', 'warning');
+            return;
+        }
+        
+        if (selectedStakeholders.length === 0) {
+            dashboard.showNotification('Please select at least one stakeholder.', 'warning');
+            return;
+        }
+
+        const options = {
+            emailType: document.getElementById('email-type').value,
+            dateRange: document.getElementById('date-range').value,
+            selectedProjects: selectedProjects,
+            selectedStakeholders: selectedStakeholders,
+            includeUrgent: document.getElementById('include-urgent').checked,
+            includeDueSoon: document.getElementById('include-due-soon').checked,
+            includeCompleted: document.getElementById('include-completed').checked,
+            includeNew: document.getElementById('include-new').checked,
+            includeProjectHealth: document.getElementById('include-project-health').checked,
+            additionalMessage: document.getElementById('additional-message').value,
+            customSubject: document.getElementById('email-subject').value
+        };
+
+        const emails = emailManager.createProjectEmail(options);
+        
+        if (emails.length > 0) {
+            // Open emails in Outlook
+            emails.forEach(email => {
+                emailManager.openOutlookEmail(email.to, email.content, email.stakeholderName, email.subject);
+            });
+            
+            dashboard.showNotification(`${emails.length} email(s) prepared in Outlook!`, 'success');
+            closeModal('create-email-modal');
+        } else {
+            dashboard.showNotification('No emails were generated. Please check your selections.', 'warning');
+        }
+    } catch (error) {
+        console.error('Email creation error:', error);
+        dashboard.showNotification('Error creating emails. Please try again.', 'error');
+    }
+});

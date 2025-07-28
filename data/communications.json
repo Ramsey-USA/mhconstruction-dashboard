@@ -8,8 +8,9 @@
     "notes": "Need clarification on electrical outlet placement in conference rooms",
     "priority": "High",
     "dueDate": "2025-07-31",
-    "status": "Pending",
-    "createdAt": "2025-07-28T02:47:26.094Z"
+    "status": "completed",
+    "createdAt": "2025-07-28T02:47:26.094Z",
+    "updatedAt": "2025-07-28T03:22:04.845Z"
   },
   {
     "id": "comm_2",

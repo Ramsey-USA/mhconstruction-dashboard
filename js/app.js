@@ -345,8 +345,14 @@ class ConstructionDashboard {
             const estimator = stakeholders.find(s => s.id === prospect.estimatorId);
             const isDueSoon = dataManager.isDueSoon(prospect.proposalDueDate, 7);
             
+            // Determine probability category for styling
+            let probabilityCategory = 'medium';
+            if (prospect.probability >= 70) probabilityCategory = 'high';
+            else if (prospect.probability < 40) probabilityCategory = 'low';
+            
             return `
-                <div class="prospect-item">
+                <div class="prospect-item" data-probability="${probabilityCategory}">
+                    <div class="prospect-status status-${prospect.status || 'active'}"></div>
                     <div class="prospect-header">
                         <div class="prospect-title">
                             <h4>${prospect.name}</h4>
@@ -355,21 +361,21 @@ class ConstructionDashboard {
                         <span class="prospect-probability">${prospect.probability}% Win Probability</span>
                     </div>
                     <div class="prospect-details">
-                        <div class="prospect-detail">
+                        <div class="prospect-detail estimator-detail">
                             <i class="fas fa-user"></i>
-                            <span>Estimator: ${estimator?.name || 'Unassigned'}</span>
+                            <span><span class="detail-label">Estimator:</span> <span class="detail-value">${estimator?.name || 'Unassigned'}</span></span>
                         </div>
-                        <div class="prospect-detail">
+                        <div class="prospect-detail date-detail">
                             <i class="fas fa-calendar"></i>
-                            <span>Walk Date: ${dataManager.formatDate(prospect.walkDate)}</span>
+                            <span><span class="detail-label">Walk Date:</span> <span class="detail-value">${dataManager.formatDate(prospect.walkDate)}</span></span>
                         </div>
-                        <div class="prospect-detail">
+                        <div class="prospect-detail date-detail">
                             <i class="fas fa-calendar-check"></i>
-                            <span>Proposal Due: ${dataManager.formatDate(prospect.proposalDueDate)}</span>
+                            <span><span class="detail-label">Proposal Due:</span> <span class="detail-value">${dataManager.formatDate(prospect.proposalDueDate)}</span></span>
                         </div>
-                        <div class="prospect-detail">
+                        <div class="prospect-detail value-detail">
                             <i class="fas fa-dollar-sign"></i>
-                            <span>Est. Value: $${(prospect.estimatedValue || 0).toLocaleString()}</span>
+                            <span><span class="detail-label">Est. Value:</span> <span class="detail-value">$${(prospect.estimatedValue || 0).toLocaleString()}</span></span>
                         </div>
                     </div>
                     ${isDueSoon ? '<div class="prospect-alert"><i class="fas fa-clock"></i> Proposal due soon!</div>' : ''}
